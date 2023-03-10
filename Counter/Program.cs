@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 namespace Counter {
 	class Program {
 		public async static Task Main(string[] args) {
-			if (args.Length != 3) {
+			if (args.Length < 2 || args.Length > 3) {
 				Console.WriteLine("Please, provided the connection string, the path to the private key (PEM format) and the password to the key as arguments");
 				return;
 			}

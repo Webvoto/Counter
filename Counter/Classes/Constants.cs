@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace Counter.Classes {
 	public static class Constants {
 		// Certificado e-CNPJ - WEBVOTO TECNOLOGIA EM ELEICOES LTDA:40732403000140
-		public const string VoteSigningCertificateThumbprint = "5D91B749CE82743806E2ED1326A2D966EFB11BE5";
+		public const string VoteSigningCertificateThumbprint = "89B0A5AA116938FCFA03844D6CBF3F7BA268120E";
 
 		public static class VoteTypes {
 			public const string Null = "Null";
