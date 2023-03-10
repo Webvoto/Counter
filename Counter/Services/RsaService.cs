@@ -19,8 +19,13 @@ namespace Counter.Services {
 			ImportPublicKey(publicKey);
 		}
 
-		public void ImportPrivateKey(string password, byte[] key)
-			=> Rsa.ImportEncryptedPkcs8PrivateKey(password, key, out _);
+		public void ImportPrivateKey(string password, byte[] key) {
+			if (!string.IsNullOrEmpty(password)) {
+				Rsa.ImportEncryptedPkcs8PrivateKey(password, key, out _);
+			} else {
+				Rsa.ImportPkcs8PrivateKey(key, out _);
+			}
+		}
 
 		public void ImportPublicKey(byte[] publicKey)
 			=> Rsa.ImportSubjectPublicKeyInfo(publicKey, out _);

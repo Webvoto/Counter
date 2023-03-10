@@ -11,6 +11,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Counter {
@@ -23,7 +24,7 @@ namespace Counter {
 
 			var connectionString = args[0];
 			var encryptionKeyPath = args[1];
-			var encryptionKeyPassword = args[2];
+			var encryptionKeyPassword = args.ElementAtOrDefault(2);
 
 			var host = Host.CreateDefaultBuilder()
 				.ConfigureServices(s => ConfigureServices(s, connectionString))
