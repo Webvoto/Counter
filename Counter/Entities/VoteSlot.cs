@@ -75,7 +75,7 @@ namespace Counter.Entities
 			return decodeValue(this.Value);
 		}
 
-		public static Vote decodeValue(byte[] encoded)
+		private static Vote decodeValue(byte[] encoded)
 		{
 			var asn1Stream = new Asn1InputStream(encoded);
 			var encodedVote = new EncodedVote(asn1Stream.ReadObject());
