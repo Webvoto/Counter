@@ -53,7 +53,7 @@ namespace Counter.Services {
 		public bool VerifyServerSignature(Vote vote, int serverInstanceId)
 			=> serverInstanceRsaCache.Rsa[serverInstanceId].VerifyDataSignature(vote.Signature, vote.ServerSignature);
 
-		public string DecryptVoteChoice(VoteModel vote)
+		public string DecryptVoteChoice(VoteItem vote)
 			=> Encoding.UTF8.GetString(voteEncryptionService.DecryptData(vote.EncryptedChoice));
 
 		private static readonly byte[] SignedAttributesDerPrefix = new byte[] {

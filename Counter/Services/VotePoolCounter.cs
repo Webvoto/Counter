@@ -58,23 +58,21 @@ namespace Counter.Services {
 		}
 
 		public void CountVote(VoteSlot voteSlot, Dictionary<string, Dictionary<string, int>> results) {
+			
+			var vote = voteSlot.GetVote();
 
-			// TODO
-			throw new NotImplementedException();
+			foreach (var encryptedChoice in vote.EncryptedChoices) {
 
-			//var vote = voteSlot.GetVote();
+				var choice = voteCryptoService.DecryptVoteChoice(encryptedChoice);
 
-			//foreach (var encryptedChoice in vote.EncryptedChoices) {
-			//	var choice = voteCryptoService.DecryptVoteChoice(encryptedChoice);
+				Dictionary<string, int> electionResults;
+				if (!results.TryGetValue(encryptedChoice.ElectionId.ToString(), out electionResults)) {
+					electionResults = new Dictionary<string, int>();
+					results[encryptedChoice.ElectionId.ToString()] = electionResults;
+				}
 
-			//	Dictionary<string, int> electionResults;
-			//	if (!results.TryGetValue(encryptedChoice.ElectionId.ToString(), out electionResults)) {
-			//		electionResults = new Dictionary<string, int>();
-			//		results[encryptedChoice.ElectionId.ToString()] = electionResults;
-			//	}
-
-			//	electionResults[choice] = electionResults.TryGetValue(choice, out var value) ? value + 1 : 1;
-			//}
+				electionResults[choice] = electionResults.TryGetValue(choice, out var value) ? value + 1 : 1;
+			}
 		}
 	}
 }
