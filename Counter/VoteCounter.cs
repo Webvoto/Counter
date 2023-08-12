@@ -12,7 +12,7 @@ namespace Counter {
 
 	public class VoteCounter {
 
-		private record Vote(int PoolId, int Slot, byte[] EncodedValue, byte[] CmsSignature, byte[] ServerSignature, int ServerInstanceId, EncodedVote Value);
+		private record Vote(int PoolId, int Slot, byte[] EncodedValue, byte[] CmsSignature, byte[] ServerSignature, int ServerInstanceId, Asn1Vote Value);
 
 		private class VoteBatch {
 
