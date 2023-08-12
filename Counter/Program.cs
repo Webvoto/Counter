@@ -49,20 +49,23 @@ static FileInfo checkPath(string path) {
 }
 
 static void printResults(ElectionResultCollection results) {
-	
-	foreach (var election in results.ElectionResults) {
 
-		var partyColumnLen = Math.Max("Chapa".Length, election.PartyResults.Max(p => p.DisplayName.Length));
-		var votesColumnLen = Math.Max("Votos".Length, election.PartyResults.Max(p => $"{p.Votes:N0}".Length));
+	var partyHeader = "Chapa";
+	var votesHeader = "Votos";
+
+	foreach (var election in results.ElectionResults.OrderBy(e => e.DisplayName)) {
+
+		var partyColumnLen = Math.Max(partyHeader.Length, election.PartyResults.Max(p => p.DisplayName.Length));
+		var votesColumnLen = Math.Max(votesHeader.Length, election.PartyResults.Max(p => p.Votes.ToString("N0").Length));
 
 		Console.WriteLine();
 		Console.WriteLine();
-		Console.WriteLine($"{new string('=', election.DisplayName.Length)}");
-		Console.WriteLine($"{election.DisplayName}");
-		Console.WriteLine($"{new string('=', election.DisplayName.Length)}");
+		Console.WriteLine($"{new string('=', election.DisplayName.Length + 2)}");
+		Console.WriteLine($" {election.DisplayName}");
+		Console.WriteLine($"{new string('=', election.DisplayName.Length + 2)}");
 		Console.WriteLine();
 		Console.WriteLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
-		Console.WriteLine($"| {"Chapa".PadRight(partyColumnLen)} | {"Votos".PadLeft(votesColumnLen)} |");
+		Console.WriteLine($"| {partyHeader.PadRight(partyColumnLen)} | {votesHeader.PadLeft(votesColumnLen)} |");
 		Console.WriteLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
 
 		foreach (var party in election.PartyResults.OrderBy(p => p.IsBlankOrNull ? 1 : 0).ThenByDescending(p => p.Votes)) {

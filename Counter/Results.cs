@@ -65,7 +65,7 @@ namespace Counter {
 				if (IsBlankOrNull) {
 					return Identifier == BlankIdentifier ? "Votos brancos" : "Votos nulos";
 				} else if (HasName && HasNumber) {
-					return $"Chapa {Number}: {Name}";
+					return $"{Number}. {Name}";
 				} else if (HasNumber) {
 					return $"Chapa {Number}";
 				} else if (HasName) {
