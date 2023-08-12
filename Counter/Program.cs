@@ -20,7 +20,7 @@ async static Task runAsync(string[] args) {
 	var partiesCsvPath = args.ElementAtOrDefault(3);
 
 	if (string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(decKeyParamsPath) || string.IsNullOrEmpty(votesCsvPath)) {
-		Console.WriteLine("Syntax: dotnet Counter\n\t<signature certificate file path>\n\t<decryption key parameters file path>\n\t<votes CSV file path>\n\t[<parties CSV file path>]");
+		Console.WriteLine("Syntax: Counter <signature certificate path> <decryption key parameters path> <votes CSV path> [<parties CSV path>]");
 		return;
 	}
 
