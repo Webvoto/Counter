@@ -19,11 +19,11 @@ namespace Counter {
 			Slot = ((DerInteger)seq[2]).Value.IntValue;
 		}
 
-		public Asn1VoteChoiceList Choices { get; set; }
+		public Asn1VoteChoiceList Choices { get; }
 
-		public int PoolId { get; set; }
+		public int PoolId { get; }
 
-		public int Slot { get; set; }
+		public int Slot { get; }
 	}
 
 	public class Asn1VoteChoiceList : List<Asn1VoteChoice> {
@@ -43,11 +43,11 @@ namespace Counter {
 
 	public class Asn1VoteChoice {
 
-		public string ElectionId { get; set; }
+		public string ElectionId { get; }
 
-		public string DistrictId { get; set; }
+		public string DistrictId { get; }
 
-		public byte[] EncryptedChoice { get; set; }
+		public byte[] EncryptedChoice { get; }
 
 		public Asn1VoteChoice(Asn1Encodable asn1Object) {
 			var seq = (Asn1Sequence)asn1Object;
