@@ -1,6 +1,15 @@
-
-Counter/bin/
-
-Counter/obj/
-
+# User-specific files
+*.user
 .vs/
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+
+# Decryption key parameters
+TestFiles/*.json
+
+# Test votes CSV (committed as zip file)
+TestFiles/votes.csv
