@@ -1,0 +1,6 @@
+{
+	"Type": "WebVault",
+	"Endpoint": "https://vault.webvoto.com.br/",
+	"ApiKey": "--- FILL API KEY ---",
+	"KeyId": "742ecef1-6b51-4820-b19f-0189c886c2da"
+}

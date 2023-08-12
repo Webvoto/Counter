@@ -2,8 +2,8 @@
   "profiles": {
 		"Counter": {
 			"commandName": "Project",
-			"commandLineArgs": "D:\\Webvoto\\Cofen23\\Keys\\1-webvoto-safeweb.cer D:\\Webvoto\\Cofen23\\Keys\\2-webvoto-certisign-webvault.json D:\\Webvoto\\Cofen23\\Apuracao\\votes.csv D:\\Webvoto\\Cofen23\\Apuracao\\parties.csv",
-			"workingDirectory": "."
+			"commandLineArgs": "signature-certificate.cer decryption-key-parameters.json votes.csv parties.csv",
+			"workingDirectory": "..\\TestFiles"
 		}
   }
 }

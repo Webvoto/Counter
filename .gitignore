@@ -7,3 +7,9 @@
 [Rr]elease/
 [Bb]in/
 [Oo]bj/
+
+# Decryption key parameters
+TestFiles/*.json
+
+# Test votes CSV (committed as zip file)
+TestFiles/votes.csv
