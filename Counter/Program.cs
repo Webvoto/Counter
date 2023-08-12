@@ -30,7 +30,7 @@ async static Task runAsync(string[] args) {
 	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
 
 	var degreeOfParallelismVar = Environment.GetEnvironmentVariable("COUNTER_WORKERS");
-	var degreeOfParallelism = !string.IsNullOrEmpty(degreeOfParallelismVar) ? int.Parse(degreeOfParallelismVar) : Environment.ProcessorCount;
+	var degreeOfParallelism = !string.IsNullOrEmpty(degreeOfParallelismVar) ? int.Parse(degreeOfParallelismVar) : 32;
 	Console.WriteLine($"Degree of parallelism: {degreeOfParallelism}");
 
 	var counter = new VoteCounter();
