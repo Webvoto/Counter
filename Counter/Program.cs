@@ -1,67 +1,70 @@
-﻿using Counter.Classes;
-using Counter.Database;
-using Counter.Repositories;
-using Counter.Services;
-using Microsoft.AspNetCore.DataProtection;
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+﻿using Counter;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace Counter {
-	class Program {
-		public async static Task Main(string[] args) {
-			if (args.Length < 2 || args.Length > 3) {
-				Console.WriteLine("Please, provided the connection string, the path to the private key (PEM format) and the password to the key as arguments");
-				return;
-			}
+try {
+	await runAsync(args);
+	return 0;
+} catch (Exception ex) {
+	Console.WriteLine($"FATAL: {ex}");
+	return 1;
+}
 
-			var connectionString = args[0];
-			var encryptionKeyPath = args[1];
-			var encryptionKeyPassword = args.ElementAtOrDefault(2);
+async static Task runAsync(string[] args) {
 
-			var host = Host.CreateDefaultBuilder()
-				.ConfigureServices(s => ConfigureServices(s, connectionString))
-				.ConfigureLogging(ConfigureLogging).Build();
+	var decKeyParamsPath = args.ElementAtOrDefault(0);
+	var sigCertPath = args.ElementAtOrDefault(1);
+	var votesCsvPath = args.ElementAtOrDefault(2);
+	var partiesCsvPath = args.ElementAtOrDefault(3);
 
-			await InitializeServicesAsync(host, encryptionKeyPath, encryptionKeyPassword);
+	if (string.IsNullOrEmpty(decKeyParamsPath) || string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(votesCsvPath)) {
+		throw new Exception("Syntax: dotnet Counter\n\t<decryption key parameters file path>\n\t<signature certificate file path>\n\t<votes CSV file path>\n\t[<parties CSV file path>]");
+	}
 
-			var databaseCounter = host.Services.GetRequiredService<DatabaseCounter>();
-			await databaseCounter.CountAndVerifyAllVotePoolsAsync();
+	var decryptionKeyParamsFile = checkPath(decKeyParamsPath);
+	var signatureCertificateFile = checkPath(sigCertPath);
+	var votesCsvFile = checkPath(votesCsvPath);
+	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
+
+	var counter = new VoteCounter();
+	counter.Initialize(decryptionKeyParamsFile, signatureCertificateFile);
+	var results = await counter.CountAsync(votesCsvFile, partiesCsvFile);
+
+	printResults(results);
+}
+
+static FileInfo checkPath(string path) {
+	var file = new FileInfo(path);
+	if (!file.Exists) {
+		throw new Exception($"File not found: '{file.FullName}'");
+	}
+	return file;
+}
+
+static void printResults(ElectionResultCollection results) {
+	
+	foreach (var election in results.ElectionResults) {
+
+		var partyColumnLen = Math.Max("Chapa".Length, election.PartyResults.Max(p => p.DisplayName.Length));
+		var votesColumnLen = Math.Max("Votos".Length, election.PartyResults.Max(p => $"{p.Votes:N0}".Length));
+
+		Console.WriteLine();
+		Console.WriteLine();
+		Console.WriteLine($"{new string('=', election.DisplayName.Length)}");
+		Console.WriteLine($"{election.DisplayName}");
+		Console.WriteLine($"{new string('=', election.DisplayName.Length)}");
+		Console.WriteLine();
+		Console.WriteLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
+		Console.WriteLine($"| {"Chapa".PadRight(partyColumnLen)} | {"Votos".PadLeft(votesColumnLen)} |");
+		Console.WriteLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
+
+		foreach (var party in election.PartyResults.OrderBy(p => p.IsBlankOrNull ? 1 : 0).ThenByDescending(p => p.Votes)) {
+			Console.WriteLine($"| {party.DisplayName.PadRight(partyColumnLen)} | {party.Votes.ToString("N0").PadLeft(votesColumnLen)} |");
 		}
 
-		public async static Task InitializeServicesAsync(IHost host, string encryptionKeyPath, string encryptionKeyPassword) {
-			var serverInstancePublicKeyCache = host.Services.GetRequiredService<ServerInstanceCache>();
-			await serverInstancePublicKeyCache.InitializeAsync();
-
-			var voteCryptoService = host.Services.GetRequiredService<VoteCryptoService>();
-			var privateKeyContent = File.ReadAllText(encryptionKeyPath);
-			var decodedKey = Util.DecodePem(privateKeyContent);
-			await voteCryptoService.InitializeAsync(encryptionKeyPassword, decodedKey);
-		}
-
-		public static void ConfigureServices(IServiceCollection services, string connectionString) {
-			services.AddDbContext<AppDbContext>(options => {
-				options.UseSqlServer(connectionString);
-			});
-
-			services.AddSingleton<ServerInstanceCache>();
-			services.AddSingleton<VoteCryptoService>();
-
-			services.AddSingleton<DatabaseCounter>();
-			services.AddSingleton<VotePoolCounter>();
-
-			services.AddTransient<VotePoolRepository>();
-		}
-
-		public static void ConfigureLogging(HostBuilderContext context, ILoggingBuilder logging) {
-			logging.AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning);
-		}
+		Console.WriteLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
+		Console.WriteLine();
 	}
 }
