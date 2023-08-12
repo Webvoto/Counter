@@ -11,12 +11,11 @@ namespace Counter {
 
 	public class WebVaultClient {
 
-		private readonly HttpClient httpClient;
+		private readonly HttpClient httpClient = new HttpClient();
 		private readonly string endpoint;
 		private readonly string apiKey;
 
-		public WebVaultClient(HttpClient httpClient, string endpoint, string apiKey) {
-			this.httpClient = httpClient;
+		public WebVaultClient(string endpoint, string apiKey) {
 			this.endpoint = endpoint;
 			this.apiKey = apiKey;
 		}

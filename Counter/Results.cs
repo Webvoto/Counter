@@ -1,26 +1,24 @@
 ﻿using CsvHelper.Configuration.Attributes;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Counter {
 
 	public class ElectionResultCollection {
 
-		private readonly Dictionary<string, ElectionResult> electionResults = new(StringComparer.InvariantCultureIgnoreCase);
+		private readonly ConcurrentDictionary<string, ElectionResult> electionResults = new(StringComparer.InvariantCultureIgnoreCase);
 
-		public ElectionResult GetOrAddElection(string electionId, Func<ElectionResult> creator = null) {
-			if (!electionResults.TryGetValue(electionId, out var electionResult)) {
-				electionResults[electionId] = electionResult = creator?.Invoke() ?? new ElectionResult(electionId);
-			}
-			return electionResult;
-		}
-
+		public ElectionResult GetOrAddElection(string electionId, Func<ElectionResult> creator = null)
+			=> electionResults.GetOrAdd(electionId, k => creator != null ? creator.Invoke() : new ElectionResult(electionId));
+			
 		public IEnumerable<ElectionResult> ElectionResults => electionResults.Values;
 	}
 
 	public class ElectionResult {
 
-		private readonly Dictionary<string, PartyResult> partyResults = new(StringComparer.InvariantCultureIgnoreCase);
+		private readonly ConcurrentDictionary<string, PartyResult> partyResults;
 
 		public string Id { get; }
 
@@ -31,21 +29,16 @@ namespace Counter {
 		public ElectionResult(string id, string name = null) {
 			Id = id;
 			Name = name;
-			addParty(PartyResult.CreateBlank());
-			addParty(PartyResult.CreateNull());
+			var blankParty = PartyResult.CreateBlank();
+			var nullParty = PartyResult.CreateNull();
+			partyResults = new ConcurrentDictionary<string, PartyResult>(StringComparer.InvariantCultureIgnoreCase) {
+				[blankParty.Identifier] = blankParty,
+				[nullParty.Identifier] = nullParty,
+			};
 		}
 
-		public PartyResult GetOrAddParty(string identifier, Func<PartyResult> creator = null) {
-			if (!partyResults.TryGetValue(identifier, out var partyResult)) {
-				partyResult = addParty(creator?.Invoke() ?? new PartyResult(identifier));
-			}
-			return partyResult;
-		}
-
-		private PartyResult addParty(PartyResult partyResult) {
-			partyResults[partyResult.Identifier] = partyResult;
-			return partyResult;
-		}
+		public PartyResult GetOrAddParty(string identifier, Func<PartyResult> creator = null)
+			=> partyResults.GetOrAdd(identifier, k => creator != null ? creator.Invoke() : new PartyResult(identifier));
 
 		public IEnumerable<PartyResult> PartyResults => partyResults.Values;
 	}
@@ -83,17 +76,19 @@ namespace Counter {
 			}
 		}
 
-		public int Votes { get; private set; }
+		private int votes;
+
+		public int Votes => votes;
 
 		public PartyResult(string identifier, string name = null, int? number = null) {
 			Identifier = identifier;
 			Name = name;
 			Number = number;
-			Votes = 0;
+			votes = 0;
 		}
 
 		public void Increment() {
-			++Votes;
+			Interlocked.Increment(ref votes);
 		}
 
 		public static PartyResult CreateBlank() => new(BlankIdentifier);

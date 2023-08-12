@@ -1,15 +1,11 @@
-﻿using CsvHelper;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace Counter {
@@ -18,27 +14,42 @@ namespace Counter {
 
 		private record Vote(int PoolId, int Slot, byte[] EncodedValue, byte[] CmsSignature, byte[] ServerSignature, int ServerInstanceId, EncodedVote Value);
 
+		private class VoteBatch {
+
+			public int Index { get; }
+
+			public List<Vote> EncryptedVotes { get; }
+
+			public DecryptionTable DecryptionTable { get; set; }
+
+			public VoteBatch(int index, IEnumerable<Vote> encryptedVotes) {
+				Index = index;
+				EncryptedVotes = new List<Vote>(encryptedVotes);
+			}
+		}
+
 		private const int BatchSize = 1000;
 
-		private readonly HttpClient httpClient = new HttpClient();
 		private readonly Dictionary<int, RSA> serverPublicKeys = new Dictionary<int, RSA>();
 		private WebVaultKeyParameters decryptionKeyParams;
 		private WebVaultClient webVaultClient;
 		private X509Certificate2 signatureCertificate;
 		private RSA signatureCertificatePublicKey;
 
-		public void Initialize(FileInfo decryptionKeyParamsFile, FileInfo signatureCertificateFile) {
-			decryptionKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(decryptionKeyParamsFile.FullName));
-			webVaultClient = new WebVaultClient(httpClient, decryptionKeyParams.Endpoint, decryptionKeyParams.ApiKey);
+		public void Initialize(FileInfo signatureCertificateFile, FileInfo decryptionKeyParamsFile) {
+			Console.WriteLine("Initializing ...");
 			signatureCertificate = new X509Certificate2(File.ReadAllBytes(signatureCertificateFile.FullName));
 			signatureCertificatePublicKey = signatureCertificate.GetRSAPublicKey();
+			decryptionKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(decryptionKeyParamsFile.FullName));
+			webVaultClient = new WebVaultClient(decryptionKeyParams.Endpoint, decryptionKeyParams.ApiKey);
 		}
 
-		public async Task<ElectionResultCollection> CountAsync(FileInfo votesCsvFile, FileInfo partiesCsvFile = null) {
+		public async Task<ElectionResultCollection> CountAsync(FileInfo votesCsvFile, FileInfo partiesCsvFile, int degreeOfParallelism) {
 
 			var results = new ElectionResultCollection();
 
 			if (partiesCsvFile != null) {
+				Console.WriteLine("Reading parties ...");
 				using var partyCsvReader = PartiesCsvReader.Open(partiesCsvFile);
 				foreach (var party in partyCsvReader.GetRecords()) {
 					results
@@ -47,32 +58,82 @@ namespace Counter {
 				}
 			}
 
+			Console.Write("Reading server keys ...");
+			var voteIndex = 0;
 			using (var votesCsvReader = VotesCsvReader.Open(votesCsvFile)) {
 				foreach (var voteRecord in votesCsvReader.GetRecords()) {
 					if (!serverPublicKeys.ContainsKey(voteRecord.ServerInstanceId)) {
 						serverPublicKeys[voteRecord.ServerInstanceId] = getPublicKey(decodeHexString(voteRecord.ServerPublicKey));
+						Console.Write(".");
+					}
+					if (++voteIndex % 1000 == 0) {
+						Console.Write(".");
 					}
 				}
+			}
+			Console.WriteLine();
+
+			var decryptionQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
+			var countingQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
+			var decryptionTasks = new List<Task>();
+			var countingTasks = new List<Task>();
+
+			for (var i = 0; i < degreeOfParallelism; i++) {
+				decryptionTasks.Add(Task.Run(() => decryptVotesAsync(decryptionQueue.Reader, countingQueue.Writer)));
+				countingTasks.Add(Task.Run(() => countVotesAsync(countingQueue.Reader, results)));
 			}
 
-			using (var votesCsvReader = VotesCsvReader.Open(votesCsvFile)) {
-				var voteBatch = new List<Vote>();
-				foreach (var voteRecord in votesCsvReader.GetRecords()) {
-					voteBatch.Add(decodeVote(voteRecord));
-					if (voteBatch.Count == BatchSize) {
-						await countVoteBatchAsync(results, voteBatch);
-						Console.Write($".");
-						voteBatch.Clear();
-					}
-				}
-				if (voteBatch.Any()) {
-					await countVoteBatchAsync(results, voteBatch);
-					Console.Write($".");
-				}
-			}
+			Console.Write("Counting votes ... ");
+
+			await readVotesAsync(votesCsvFile, decryptionQueue.Writer);
+			
+			decryptionQueue.Writer.Complete();
+			await Task.WhenAll(decryptionTasks);
+
+			countingQueue.Writer.Complete();
+			await Task.WhenAll(countingTasks);
+
 			Console.WriteLine($" DONE");
 
 			return results;
+		}
+
+		private async Task readVotesAsync(FileInfo votesCsvFile, ChannelWriter<VoteBatch> outQueue) {
+			var batchIndex = 0;
+			var votes = new List<Vote>();
+			using var votesCsvReader = VotesCsvReader.Open(votesCsvFile);
+			foreach (var voteRecord in votesCsvReader.GetRecords()) {
+				votes.Add(decodeVote(voteRecord));
+				if (votes.Count == BatchSize) {
+					var batch = new VoteBatch(batchIndex++, votes);
+					Console.Write($"[{batch.Index:D3}R]");
+					await outQueue.WriteAsync(batch);
+					votes.Clear();
+				}
+			}
+			if (votes.Any()) {
+				var batch = new VoteBatch(batchIndex++, votes);
+				Console.Write($"[{batch.Index:D3}R]");
+				await outQueue.WriteAsync(batch);
+			}
+		}
+
+		private async Task decryptVotesAsync(ChannelReader<VoteBatch> inQueue, ChannelWriter<VoteBatch> outQueue) {
+			await foreach (var batch in inQueue.ReadAllAsync()) {
+				batch.DecryptionTable = await decryptChoicesAsync(batch.EncryptedVotes);
+				Console.Write($"[{batch.Index:D3}D]");
+				await outQueue.WriteAsync(batch);
+			}
+		}
+
+		private async Task countVotesAsync(ChannelReader<VoteBatch> inQueue, ElectionResultCollection results) {
+			await foreach (var batch in inQueue.ReadAllAsync()) {
+				foreach (var vote in batch.EncryptedVotes) {
+					checkVote(vote);
+					countVote(results, batch.DecryptionTable, vote);
+				}
+				Console.Write($"[{batch.Index:D3}C]");
+			}
 		}
 
 		private Vote decodeVote(VoteCsvRecord csvEntry) {
@@ -83,16 +144,6 @@ namespace Counter {
 			var serverSignature = decodeHexString(csvEntry.ServerSignature);
 			var value = VoteEncoding.Decode(encodedValue);
 			return new Vote(poolId, slot, encodedValue, cmsSignature, serverSignature, csvEntry.ServerInstanceId, value);
-		}
-
-		private async Task countVoteBatchAsync(ElectionResultCollection results, List<Vote> votes) {
-
-			var choiceDecryptions = await decryptChoicesAsync(votes);
-
-			foreach (var vote in votes) {
-				checkVote(vote);
-				countVote(results, choiceDecryptions, vote);
-			}
 		}
 
 		private async Task<DecryptionTable> decryptChoicesAsync(List<Vote> votes) {

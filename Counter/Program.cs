@@ -14,23 +14,28 @@ try {
 
 async static Task runAsync(string[] args) {
 
-	var decKeyParamsPath = args.ElementAtOrDefault(0);
-	var sigCertPath = args.ElementAtOrDefault(1);
+	var sigCertPath = args.ElementAtOrDefault(0);
+	var decKeyParamsPath = args.ElementAtOrDefault(1);
 	var votesCsvPath = args.ElementAtOrDefault(2);
 	var partiesCsvPath = args.ElementAtOrDefault(3);
 
-	if (string.IsNullOrEmpty(decKeyParamsPath) || string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(votesCsvPath)) {
-		throw new Exception("Syntax: dotnet Counter\n\t<decryption key parameters file path>\n\t<signature certificate file path>\n\t<votes CSV file path>\n\t[<parties CSV file path>]");
+	if (string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(decKeyParamsPath) || string.IsNullOrEmpty(votesCsvPath)) {
+		Console.WriteLine("Syntax: dotnet Counter\n\t<signature certificate file path>\n\t<decryption key parameters file path>\n\t<votes CSV file path>\n\t[<parties CSV file path>]");
+		return;
 	}
 
-	var decryptionKeyParamsFile = checkPath(decKeyParamsPath);
 	var signatureCertificateFile = checkPath(sigCertPath);
+	var decryptionKeyParamsFile = checkPath(decKeyParamsPath);
 	var votesCsvFile = checkPath(votesCsvPath);
 	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
 
+	var degreeOfParallelismVar = Environment.GetEnvironmentVariable("COUNTER_WORKERS");
+	var degreeOfParallelism = !string.IsNullOrEmpty(degreeOfParallelismVar) ? int.Parse(degreeOfParallelismVar) : Environment.ProcessorCount;
+	Console.WriteLine($"Degree of parallelism: {degreeOfParallelism}");
+
 	var counter = new VoteCounter();
-	counter.Initialize(decryptionKeyParamsFile, signatureCertificateFile);
-	var results = await counter.CountAsync(votesCsvFile, partiesCsvFile);
+	counter.Initialize(signatureCertificateFile, decryptionKeyParamsFile);
+	var results = await counter.CountAsync(votesCsvFile, partiesCsvFile, degreeOfParallelism);
 
 	printResults(results);
 }
