@@ -21,23 +21,30 @@ namespace Counter {
 		}
 
 		public async Task<List<byte[]>> DecryptBatchAsync(Guid keyId, IEnumerable<byte[]> ciphers) {
-
-			var uri = new Uri(new Uri(endpoint), $"/api/keys/{keyId}/ciphertext-batch");
 			var request = new DecryptBatchRequest {
 				Ciphers = ciphers.Select(c => new CipherAlgorithmAndValueModel { Algorithm = EncryptionAlgorithms.RsaOaepSha256, Value = c }).ToList(),
 			};
-			var requestJson = JsonConvert.SerializeObject(request);
-			var httpRequest = new HttpRequestMessage(HttpMethod.Put, uri);
+			var response = await sendAsync<DecryptBatchResponse>(HttpMethod.Put, $"/api/keys/{keyId}/ciphertext-batch", request);
+			return response.Plaintexts;
+		}
+
+		public async Task<byte[]> SignCadesAsync(Guid keyId, byte[] data, byte[] certificate) {
+			var request = new SignCadesRequest {
+				Data = data,
+				Certificate = certificate,
+			};
+			var response = await sendAsync<SignCadesResponse>(HttpMethod.Put, $"/api/keys/{keyId}/cades", request);
+			return response.Cms;
+		}
+
+		private async Task<TResponse> sendAsync<TResponse>(HttpMethod method, string relativeUri, object request) {
+			var httpRequest = new HttpRequestMessage(method, new Uri(new Uri(endpoint), relativeUri));
 			httpRequest.Headers.Authorization = new AuthenticationHeaderValue("ApiKey", apiKey);
-			httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-
+			httpRequest.Content = new StringContent(JsonConvert.SerializeObject(request), Encoding.UTF8, "application/json");
 			var httpResponse = await httpClient.SendAsync(httpRequest);
-
 			httpResponse.EnsureSuccessStatusCode();
 			var responseJson = await httpResponse.Content.ReadAsStringAsync();
-			var response = JsonConvert.DeserializeObject<DecryptBatchResponse>(responseJson);
-
-			return response.Plaintexts;
+			return JsonConvert.DeserializeObject<TResponse>(responseJson);
 		}
 
 		#region API models
@@ -64,6 +71,18 @@ namespace Counter {
 		public class DecryptBatchResponse {
 
 			public List<byte[]> Plaintexts { get; set; }
+		}
+
+		public class SignCadesRequest {
+
+			public byte[] Data { get; set; }
+
+			public byte[] Certificate { get; set; }
+		}
+
+		public class SignCadesResponse {
+
+			public byte[] Cms { get; set; }
 		}
 
 		#endregion

@@ -2,6 +2,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 try {
@@ -37,7 +38,19 @@ async static Task runAsync(string[] args) {
 	counter.Initialize(signatureCertificateFile, decryptionKeyParamsFile);
 	var results = await counter.CountAsync(votesCsvFile, partiesCsvFile, degreeOfParallelism);
 
-	printResults(results);
+	var formattedResults = formatResults(results);
+	Console.Write(formattedResults);
+
+	var signatureKeyParamsFile = new FileInfo(Path.ChangeExtension(signatureCertificateFile.FullName, ".json"));
+	if (signatureKeyParamsFile.Exists) {
+		Console.WriteLine("Signing results ...");
+		var signatureKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(signatureKeyParamsFile.FullName));
+		var webVaultClient = new WebVaultClient(signatureKeyParams.Endpoint, signatureKeyParams.ApiKey);
+		var cms = await webVaultClient.SignCadesAsync(signatureKeyParams.KeyId, Encoding.UTF8.GetBytes(formattedResults), File.ReadAllBytes(signatureCertificateFile.FullName));
+		var cmsPath = $"signed-results-{DateTime.Now:yyyy-MM-dd-HHmmss}.p7s";
+		File.WriteAllBytes($"signed-results-{DateTime.Now:yyyy-MM-dd-HHmmss}.p7s", cms);
+		Console.WriteLine($"Signed results written to '{cmsPath}'");
+	}
 }
 
 static FileInfo checkPath(string path) {
@@ -48,7 +61,9 @@ static FileInfo checkPath(string path) {
 	return file;
 }
 
-static void printResults(ElectionResultCollection results) {
+static string formatResults(ElectionResultCollection results) {
+
+	var text = new StringBuilder();
 
 	var partyHeader = "Chapa";
 	var votesHeader = "Votos";
@@ -58,21 +73,23 @@ static void printResults(ElectionResultCollection results) {
 		var partyColumnLen = Math.Max(partyHeader.Length, election.PartyResults.Max(p => p.DisplayName.Length));
 		var votesColumnLen = Math.Max(votesHeader.Length, election.PartyResults.Max(p => p.Votes.ToString("N0").Length));
 
-		Console.WriteLine();
-		Console.WriteLine();
-		Console.WriteLine($"{new string('=', election.DisplayName.Length + 2)}");
-		Console.WriteLine($" {election.DisplayName}");
-		Console.WriteLine($"{new string('=', election.DisplayName.Length + 2)}");
-		Console.WriteLine();
-		Console.WriteLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
-		Console.WriteLine($"| {partyHeader.PadRight(partyColumnLen)} | {votesHeader.PadLeft(votesColumnLen)} |");
-		Console.WriteLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
+		text.AppendLine();
+		text.AppendLine();
+		text.AppendLine($"{new string('=', election.DisplayName.Length + 2)}");
+		text.AppendLine($" {election.DisplayName}");
+		text.AppendLine($"{new string('=', election.DisplayName.Length + 2)}");
+		text.AppendLine();
+		text.AppendLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
+		text.AppendLine($"| {partyHeader.PadRight(partyColumnLen)} | {votesHeader.PadLeft(votesColumnLen)} |");
+		text.AppendLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
 
 		foreach (var party in election.PartyResults.OrderBy(p => p.IsBlankOrNull ? 1 : 0).ThenByDescending(p => p.Votes)) {
-			Console.WriteLine($"| {party.DisplayName.PadRight(partyColumnLen)} | {party.Votes.ToString("N0").PadLeft(votesColumnLen)} |");
+			text.AppendLine($"| {party.DisplayName.PadRight(partyColumnLen)} | {party.Votes.ToString("N0").PadLeft(votesColumnLen)} |");
 		}
 
-		Console.WriteLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
-		Console.WriteLine();
+		text.AppendLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
+		text.AppendLine();
 	}
+
+	return text.ToString();
 }

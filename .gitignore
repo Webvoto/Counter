@@ -13,3 +13,6 @@ TestFiles/*.json
 
 # Test votes CSV (committed as zip file)
 TestFiles/votes.csv
+
+# Generated signed results
+TestFiles/*.p7s
