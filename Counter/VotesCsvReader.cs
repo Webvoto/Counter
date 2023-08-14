@@ -46,7 +46,7 @@ namespace Counter {
 		}
 
 		public IEnumerable<VoteCsvRecord> GetRecords()
-			=> csvReader.GetRecords<VoteCsvRecord>().ToList();
+			=> csvReader.GetRecords<VoteCsvRecord>();
 
 		public void Dispose() {
 			csvReader.Dispose();

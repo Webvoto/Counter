@@ -42,7 +42,7 @@ namespace Counter {
 		}
 
 		public IEnumerable<PartyCsvRecord> GetRecords()
-			=> csvReader.GetRecords<PartyCsvRecord>().ToList();
+			=> csvReader.GetRecords<PartyCsvRecord>();
 
 		public void Dispose() {
 			csvReader.Dispose();
