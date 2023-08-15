@@ -40,8 +40,10 @@ namespace Counter {
 			Console.WriteLine("Initializing ...");
 			signatureCertificate = new X509Certificate2(File.ReadAllBytes(signatureCertificateFile.FullName));
 			signatureCertificatePublicKey = signatureCertificate.GetRSAPublicKey();
-			decryptionKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(decryptionKeyParamsFile.FullName));
-			webVaultClient = new WebVaultClient(decryptionKeyParams.Endpoint, decryptionKeyParams.ApiKey);
+			if (decryptionKeyParamsFile != null) {
+				decryptionKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(decryptionKeyParamsFile.FullName));
+				webVaultClient = new WebVaultClient(decryptionKeyParams.Endpoint, decryptionKeyParams.ApiKey);
+			}
 		}
 
 		public async Task<ElectionResultCollection> CountAsync(FileInfo votesCsvFile, FileInfo partiesCsvFile, int degreeOfParallelism) {
@@ -73,29 +75,54 @@ namespace Counter {
 			}
 			Console.WriteLine();
 
-			var decryptionQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
-			var countingQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
-			var decryptionTasks = new List<Task>();
-			var countingTasks = new List<Task>();
+			if (decryptionKeyParams != null) {
 
-			for (var i = 0; i < degreeOfParallelism; i++) {
-				decryptionTasks.Add(Task.Run(() => decryptVotesAsync(decryptionQueue.Reader, countingQueue.Writer)));
-				countingTasks.Add(Task.Run(() => countVotesAsync(countingQueue.Reader, results)));
+				// Decryption key given, check and count votes
+
+				var decryptionQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
+				var countingQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
+				var decryptionTasks = new List<Task>();
+				var countingTasks = new List<Task>();
+
+				for (var i = 0; i < degreeOfParallelism; i++) {
+					decryptionTasks.Add(Task.Run(() => decryptVotesAsync(decryptionQueue.Reader, countingQueue.Writer)));
+					countingTasks.Add(Task.Run(() => checkAndCountVotesAsync(countingQueue.Reader, results)));
+				}
+
+				Console.Write("Counting votes ... ");
+
+				await readVotesAsync(votesCsvFile, decryptionQueue.Writer);
+
+				decryptionQueue.Writer.Complete();
+				await Task.WhenAll(decryptionTasks);
+
+				countingQueue.Writer.Complete();
+				await Task.WhenAll(countingTasks);
+
+				Console.WriteLine($" DONE");
+				return results;
+
+			} else {
+
+				// Decryption key not given, only check votes
+
+				var checkingQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
+				var checkingTasks = new List<Task>();
+
+				for (var i = 0; i < degreeOfParallelism; i++) {
+					checkingTasks.Add(Task.Run(() => checkVotesAsync(checkingQueue.Reader)));
+				}
+
+				Console.Write("Checking votes ... ");
+
+				await readVotesAsync(votesCsvFile, checkingQueue.Writer);
+
+				checkingQueue.Writer.Complete();
+				await Task.WhenAll(checkingTasks);
+
+				Console.WriteLine($" DONE");
+				return null;
 			}
-
-			Console.Write("Counting votes ... ");
-
-			await readVotesAsync(votesCsvFile, decryptionQueue.Writer);
-			
-			decryptionQueue.Writer.Complete();
-			await Task.WhenAll(decryptionTasks);
-
-			countingQueue.Writer.Complete();
-			await Task.WhenAll(countingTasks);
-
-			Console.WriteLine($" DONE");
-
-			return results;
 		}
 
 		private async Task readVotesAsync(FileInfo votesCsvFile, ChannelWriter<VoteBatch> outQueue) {
@@ -126,7 +153,16 @@ namespace Counter {
 			}
 		}
 
-		private async Task countVotesAsync(ChannelReader<VoteBatch> inQueue, ElectionResultCollection results) {
+		private async Task checkVotesAsync(ChannelReader<VoteBatch> inQueue) {
+			await foreach (var batch in inQueue.ReadAllAsync()) {
+				foreach (var vote in batch.EncryptedVotes) {
+					checkVote(vote);
+				}
+				Console.Write($"[{batch.Index:D3}V]");
+			}
+		}
+
+		private async Task checkAndCountVotesAsync(ChannelReader<VoteBatch> inQueue, ElectionResultCollection results) {
 			await foreach (var batch in inQueue.ReadAllAsync()) {
 				foreach (var vote in batch.EncryptedVotes) {
 					checkVote(vote);
