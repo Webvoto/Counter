@@ -31,19 +31,41 @@ namespace Counter {
 		private const int BatchSize = 1000;
 
 		private readonly Dictionary<int, RSA> serverPublicKeys = new Dictionary<int, RSA>();
+		private RSA decryptionKey;
 		private WebVaultKeyParameters decryptionKeyParams;
 		private WebVaultClient webVaultClient;
 		private X509Certificate2 signatureCertificate;
 		private RSA signatureCertificatePublicKey;
 
-		public void Initialize(FileInfo signatureCertificateFile, FileInfo decryptionKeyParamsFile) {
+		public void Initialize(FileInfo signatureCertificateFile, FileInfo decryptionKeyFile) {
 			Console.WriteLine("Initializing ...");
 			signatureCertificate = new X509Certificate2(File.ReadAllBytes(signatureCertificateFile.FullName));
 			signatureCertificatePublicKey = signatureCertificate.GetRSAPublicKey();
-			if (decryptionKeyParamsFile != null) {
-				decryptionKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(decryptionKeyParamsFile.FullName));
-				webVaultClient = new WebVaultClient(decryptionKeyParams.Endpoint, decryptionKeyParams.ApiKey);
+			if (decryptionKeyFile != null) {
+				if (decryptionKeyFile.Extension.Equals(".pem", StringComparison.InvariantCultureIgnoreCase)) {
+					initializeLocalDecryptionKey(decryptionKeyFile);
+				} else if (decryptionKeyFile.Extension.Equals(".json", StringComparison.InvariantCultureIgnoreCase)) {
+					initializeRemoteDecryptionKey(decryptionKeyFile);
+				} else {
+					throw new Exception($"Unexpected decryption key file extension: '{decryptionKeyFile.Extension}'");
+				}
 			}
+		}
+
+		private void initializeLocalDecryptionKey(FileInfo decryptionKeyFile) {
+			var decryptionKeyPkcs8Pem = File.ReadAllBytes(decryptionKeyFile.FullName);
+			var decryptionKeyPkcs8Bytes = Util.DecodePem(decryptionKeyPkcs8Pem);
+			
+			Console.WriteLine("Please provide the decryption key file password:");
+			var password = Console.ReadLine();
+			
+			decryptionKey = RSA.Create();
+			decryptionKey.ImportEncryptedPkcs8PrivateKey(Encoding.UTF8.GetBytes(password), decryptionKeyPkcs8Bytes, out _);
+		}
+
+		private void initializeRemoteDecryptionKey(FileInfo decryptionKeyFile) {
+			decryptionKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(decryptionKeyFile.FullName));
+			webVaultClient = new WebVaultClient(decryptionKeyParams.Endpoint, decryptionKeyParams.ApiKey);
 		}
 
 		public async Task<ElectionResultCollection> CountAsync(FileInfo votesCsvFile, FileInfo partiesCsvFile, int degreeOfParallelism) {
@@ -56,7 +78,7 @@ namespace Counter {
 				foreach (var party in partyCsvReader.GetRecords()) {
 					results
 						.GetOrAddElection(party.ElectionId, () => new ElectionResult(party.ElectionId, party.ElectionName))
-						.GetOrAddParty(party.PartyId, () => new PartyResult(party.PartyId, party.PartyName, !string.IsNullOrEmpty(party.PartyNumber) ? int.Parse(party.PartyNumber) : null));
+						.GetOrAddParty(party.PartyId, () => new PartyResult(party.PartyId, party.PartyName, !string.IsNullOrEmpty(party.PartyNumber) && !party.PartyNumber.Equals("NULL", StringComparison.InvariantCultureIgnoreCase) ? int.Parse(party.PartyNumber) : null));
 				}
 			}
 
@@ -65,7 +87,7 @@ namespace Counter {
 			using (var votesCsvReader = VotesCsvReader.Open(votesCsvFile)) {
 				foreach (var voteRecord in votesCsvReader.GetRecords()) {
 					if (!serverPublicKeys.ContainsKey(voteRecord.ServerInstanceId)) {
-						serverPublicKeys[voteRecord.ServerInstanceId] = getPublicKey(decodeHexString(voteRecord.ServerPublicKey));
+						serverPublicKeys[voteRecord.ServerInstanceId] = getPublicKey(Util.DecodeHex(voteRecord.ServerPublicKey));
 						Console.Write(".");
 					}
 					if (++voteIndex % 1000 == 0) {
@@ -75,7 +97,7 @@ namespace Counter {
 			}
 			Console.WriteLine();
 
-			if (decryptionKeyParams != null) {
+			if (decryptionKey != null || decryptionKeyParams != null) {
 
 				// Decryption key given, check and count votes
 
@@ -175,16 +197,18 @@ namespace Counter {
 		private Vote decodeVote(VoteCsvRecord csvEntry) {
 			var poolId = csvEntry.PoolId;
 			var slot = csvEntry.Slot;
-			var encodedValue = decodeHexString(csvEntry.Value);
-			var cmsSignature = decodeHexString(csvEntry.CmsSignature);
-			var serverSignature = decodeHexString(csvEntry.ServerSignature);
+			var encodedValue = Util.DecodeHex(csvEntry.Value);
+			var cmsSignature = Util.DecodeHex(csvEntry.CmsSignature);
+			var serverSignature = Util.DecodeHex(csvEntry.ServerSignature);
 			var value = VoteEncoding.Decode(encodedValue);
 			return new Vote(poolId, slot, encodedValue, cmsSignature, serverSignature, csvEntry.ServerInstanceId, value);
 		}
 
 		private async Task<DecryptionTable> decryptChoicesAsync(List<Vote> votes) {
 			var ciphers = votes.SelectMany(v => v.Value.Choices.Select(c => c.EncryptedChoice));
-			var plaintexts = await webVaultClient.DecryptBatchAsync(decryptionKeyParams.KeyId, ciphers);
+			var plaintexts = decryptionKey != null
+				? ciphers.Select(c => decryptionKey.Decrypt(c, RSAEncryptionPadding.OaepSHA256))
+				: await webVaultClient.DecryptBatchAsync(decryptionKeyParams.KeyId, ciphers);
 			return new DecryptionTable(ciphers, plaintexts);
 		}
 
@@ -232,20 +256,6 @@ namespace Counter {
 		}
 
 		#region Helper methods
-
-		private static byte[] decodeHexString(string s) {
-			if (s == null) {
-				throw new ArgumentNullException(nameof(s));
-			}
-			if (s.Length % 2 != 0) {
-				throw new Exception("Invalid hex string: bad length");
-			}
-			var result = new byte[s.Length / 2];
-			for (var i = 0; i < result.Length; i++) {
-				result[i] = Convert.ToByte(s.Substring(i * 2, 2), 16);
-			}
-			return result;
-		}
 
 		private RSA getPublicKey(byte[] encodedPublicKey) {
 			var rsa = RSA.Create();

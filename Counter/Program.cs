@@ -17,17 +17,17 @@ async static Task runAsync(string[] args) {
 
 	var sigCertPath = args.ElementAtOrDefault(0);
 	var votesCsvPath = args.ElementAtOrDefault(1);
-	var decKeyParamsPath = args.ElementAtOrDefault(2);
+	var decKeyPath = args.ElementAtOrDefault(2);
 	var partiesCsvPath = args.ElementAtOrDefault(3);
 
 	if (string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(votesCsvPath)) {
-		Console.WriteLine("Syntax: Counter <signature certificate path> <votes CSV path> [<decryption key parameters path>] [<parties CSV path>]");
+		Console.WriteLine("Syntax: Counter <signature certificate path> <votes CSV path> [<decryption key path>] [<parties CSV path>]");
 		return;
 	}
 
 	var signatureCertificateFile = checkPath(sigCertPath);
 	var votesCsvFile = checkPath(votesCsvPath);
-	var decryptionKeyParamsFile = !string.IsNullOrEmpty(decKeyParamsPath) ? checkPath(decKeyParamsPath) : null;
+	var decryptionKeyFile = !string.IsNullOrEmpty(decKeyPath) ? checkPath(decKeyPath) : null;
 	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
 
 	var degreeOfParallelismVar = Environment.GetEnvironmentVariable("COUNTER_WORKERS");
@@ -35,7 +35,7 @@ async static Task runAsync(string[] args) {
 	Console.WriteLine($"Degree of parallelism: {degreeOfParallelism}");
 
 	var counter = new VoteCounter();
-	counter.Initialize(signatureCertificateFile, decryptionKeyParamsFile);
+	counter.Initialize(signatureCertificateFile, decryptionKeyFile);
 	var results = await counter.CountAsync(votesCsvFile, partiesCsvFile, degreeOfParallelism);
 
 	if (results == null) {
