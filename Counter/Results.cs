@@ -21,7 +21,7 @@ namespace Counter {
 
 	public class ElectionResult {
 
-		private readonly ConcurrentDictionary<string, PartyResult> partyResults;
+		private readonly ConcurrentDictionary<string, DistrictResult> districtResults;
 
 		public string Id { get; }
 
@@ -30,6 +30,32 @@ namespace Counter {
 		public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name : Id;
 
 		public ElectionResult(string id, string name = null) {
+			Id = id;
+			Name = name;
+			districtResults = new ConcurrentDictionary<string, DistrictResult>(StringComparer.InvariantCultureIgnoreCase);
+		}
+		
+		public DistrictResult GetOrAddDistrict(string id, Func<DistrictResult> creator = null)
+			=> districtResults.GetOrAdd(id ?? "", k => creator != null ? creator.Invoke() : new DistrictResult(id));
+
+		public IEnumerable<DistrictResult> DistrictResults => districtResults.Values;
+
+		public IEnumerable<DistrictResult> DistrictResultsOrdered => DistrictResults.OrderBy(d => d.DisplayName);
+	}
+
+	public class DistrictResult {
+
+		private readonly ConcurrentDictionary<string, PartyResult> partyResults;
+
+		public string Id { get; }
+
+		public string Name { get; }
+
+		public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name
+			: !string.IsNullOrEmpty(Id) ? Id
+			: "(não especificado)";
+
+		public DistrictResult(string id, string name = null) {
 			Id = id;
 			Name = name;
 			var blankParty = PartyResult.CreateBlank();

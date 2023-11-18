@@ -35,7 +35,7 @@ namespace Counter {
 		public static VotesCsvReader Open(FileInfo file) {
 			var stream = file.OpenRead();
 			var streamReader = new StreamReader(stream);
-			var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture);
+			var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture /* default in SSMS is exporting with commas regardless of the OS culture */);
 			return new VotesCsvReader(stream, streamReader, csvReader);
 		}
 

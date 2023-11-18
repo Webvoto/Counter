@@ -10,42 +10,36 @@ using System.Threading.Tasks;
 
 namespace Counter {
 
-	public class PartyCsvRecord {
-
-		public string PartyId { get; set; }
-
-		public string PartyName { get; set; }
-
-		public string PartyNumber { get; set; }
+	public class DistrictCsvRecord {
 
 		public string SubscriptionId { get; set; }
 
-		public string ElectionId { get; set; }
+		public string DistrictId { get; set; }
 
-		public string ElectionName { get; set; }
+		public string DistrictName { get; set; }
 	}
 
-	public class PartiesCsvReader : IDisposable {
+	public class DistrictsCsvReader : IDisposable {
 
 		private readonly Stream stream;
 		private readonly StreamReader streamReader;
 		private readonly CsvReader csvReader;
 
-		public static PartiesCsvReader Open(FileInfo file) {
+		public static DistrictsCsvReader Open(FileInfo file) {
 			var stream = file.OpenRead();
 			var streamReader = new StreamReader(stream);
 			var csvReader = new CsvReader(streamReader, Thread.CurrentThread.CurrentCulture);
-			return new PartiesCsvReader(stream, streamReader, csvReader);
+			return new DistrictsCsvReader(stream, streamReader, csvReader);
 		}
 
-		private PartiesCsvReader(Stream stream, StreamReader streamReader, CsvReader csvReader) {
+		private DistrictsCsvReader(Stream stream, StreamReader streamReader, CsvReader csvReader) {
 			this.stream = stream;
 			this.streamReader = streamReader;
 			this.csvReader = csvReader;
 		}
 
-		public IEnumerable<PartyCsvRecord> GetRecords()
-			=> csvReader.GetRecords<PartyCsvRecord>();
+		public IEnumerable<DistrictCsvRecord> GetRecords()
+			=> csvReader.GetRecords<DistrictCsvRecord>();
 
 		public void Dispose() {
 			csvReader.Dispose();
