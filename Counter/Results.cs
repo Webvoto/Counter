@@ -11,12 +11,10 @@ namespace Counter {
 
 		private readonly ConcurrentDictionary<string, ElectionResult> electionResults = new(StringComparer.InvariantCultureIgnoreCase);
 
-		public ElectionResult GetOrAddElection(string electionId, Func<ElectionResult> creator = null)
-			=> electionResults.GetOrAdd(electionId, k => creator != null ? creator.Invoke() : new ElectionResult(electionId));
+		public ElectionResult GetOrAddElection(string electionId)
+			=> electionResults.GetOrAdd(electionId, new ElectionResult(electionId));
 			
 		public IEnumerable<ElectionResult> ElectionResults => electionResults.Values;
-
-		public IEnumerable<ElectionResult> ElectionResultsOrdered => ElectionResults.OrderBy(e => e.DisplayName);
 	}
 
 	public class ElectionResult {
@@ -25,22 +23,15 @@ namespace Counter {
 
 		public string Id { get; }
 
-		public string Name { get; }
-
-		public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name : Id;
-
-		public ElectionResult(string id, string name = null) {
+		public ElectionResult(string id) {
 			Id = id;
-			Name = name;
 			districtResults = new ConcurrentDictionary<string, DistrictResult>(StringComparer.InvariantCultureIgnoreCase);
 		}
 		
-		public DistrictResult GetOrAddDistrict(string id, Func<DistrictResult> creator = null)
-			=> districtResults.GetOrAdd(id ?? "", k => creator != null ? creator.Invoke() : new DistrictResult(id));
+		public DistrictResult GetOrAddDistrict(string id)
+			=> districtResults.GetOrAdd(id ?? "", new DistrictResult(id));
 
 		public IEnumerable<DistrictResult> DistrictResults => districtResults.Values;
-
-		public IEnumerable<DistrictResult> DistrictResultsOrdered => DistrictResults.OrderBy(d => d.DisplayName);
 	}
 
 	public class DistrictResult {
@@ -49,81 +40,41 @@ namespace Counter {
 
 		public string Id { get; }
 
-		public string Name { get; }
-
-		public string DisplayName => !string.IsNullOrWhiteSpace(Name) ? Name
-			: !string.IsNullOrEmpty(Id) ? Id
-			: "(não especificado)";
-
-		public DistrictResult(string id, string name = null) {
+		public DistrictResult(string id) {
 			Id = id;
-			Name = name;
-			var blankParty = PartyResult.CreateBlank();
-			var nullParty = PartyResult.CreateNull();
-			partyResults = new ConcurrentDictionary<string, PartyResult>(StringComparer.InvariantCultureIgnoreCase) {
-				[blankParty.Identifier] = blankParty,
-				[nullParty.Identifier] = nullParty,
-			};
+			partyResults = new ConcurrentDictionary<string, PartyResult>(StringComparer.InvariantCultureIgnoreCase);
 		}
 
-		public PartyResult GetOrAddParty(string identifier, Func<PartyResult> creator = null)
-			=> partyResults.GetOrAdd(identifier, k => creator != null ? creator.Invoke() : new PartyResult(identifier));
+		public PartyResult GetOrAddParty(string identifier)
+			=> partyResults.GetOrAdd(identifier, new PartyResult(identifier));
 
 		public IEnumerable<PartyResult> PartyResults => partyResults.Values;
-
-		public IEnumerable<PartyResult> PartyResultsOrdered => PartyResults.OrderBy(p => p.IsBlankOrNull ? 1 : 0).ThenByDescending(p => p.Votes);
 	}
 
 	public class PartyResult {
 
-		private const string BlankIdentifier = "Blank";
-		private const string NullIdentifier = "Null";
+		public const string BlankIdentifier = "Blank";
+		public const string NullIdentifier = "Null";
 
 		public string Identifier { get; }
 
-		public bool IsBlankOrNull => Identifier == BlankIdentifier || Identifier == NullIdentifier;
+		public bool IsBlank => Identifier == BlankIdentifier;
 
-		public string Name { get; }
+		public bool IsNull => Identifier == NullIdentifier;
 
-		public bool HasName => !string.IsNullOrEmpty(Name);
-
-		public int? Number { get; }
-
-		public bool HasNumber => Number.HasValue;
-
-		public string DisplayName {
-			get {
-				if (IsBlankOrNull) {
-					return Identifier == BlankIdentifier ? "Votos brancos" : "Votos nulos";
-				} else if (HasName && HasNumber) {
-					return $"{Number}. {Name}";
-				} else if (HasNumber) {
-					return $"Chapa {Number}";
-				} else if (HasName) {
-					return $"Chapa {Name}";
-				} else {
-					return Identifier;
-				}
-			}
-		}
+		public bool IsBlankOrNull => IsBlank || IsNull;
 
 		private int votes;
 
 		public int Votes => votes;
 
-		public PartyResult(string identifier, string name = null, int? number = null) {
+		public PartyResult(string identifier) {
 			Identifier = identifier;
-			Name = name;
-			Number = number;
 			votes = 0;
 		}
 
 		public void Increment() {
 			Interlocked.Increment(ref votes);
 		}
-
-		public static PartyResult CreateBlank() => new(BlankIdentifier);
-		
-		public static PartyResult CreateNull() => new(NullIdentifier);
 	}
 }

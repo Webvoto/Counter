@@ -68,35 +68,9 @@ namespace Counter {
 			webVaultClient = new WebVaultClient(decryptionKeyParams.Endpoint, decryptionKeyParams.ApiKey);
 		}
 
-		public async Task<ElectionResultCollection> CountAsync(FileInfo votesCsvFile, FileInfo partiesCsvFile, FileInfo districtsCsvFile, int degreeOfParallelism) {
+		public async Task<ElectionResultCollection> CountAsync(FileInfo votesCsvFile, int degreeOfParallelism) {
 
 			var results = new ElectionResultCollection();
-
-			Dictionary<string, List<DistrictCsvRecord>> districtsBySubscription = null;
-			if (districtsCsvFile != null) {
-				Console.WriteLine("Reading districts ...");
-				using var districtsCsvReader = DistrictsCsvReader.Open(districtsCsvFile);
-				districtsBySubscription = districtsCsvReader.GetRecords().GroupBy(d => d.SubscriptionId).ToDictionary(g => g.Key, g => g.ToList());
-			}
-
-			if (partiesCsvFile != null) {
-				Console.WriteLine("Reading parties ...");
-				using var partyCsvReader = PartiesCsvReader.Open(partiesCsvFile);
-				foreach (var party in partyCsvReader.GetRecords()) {
-					var electionResults = results.GetOrAddElection(party.ElectionId, () => new ElectionResult(party.ElectionId, party.ElectionName));
-					var partyResultCreator = () => new PartyResult(party.PartyId, party.PartyName, !string.IsNullOrEmpty(party.PartyNumber) && !party.PartyNumber.Equals("NULL", StringComparison.InvariantCultureIgnoreCase) ? int.Parse(party.PartyNumber) : null);
-					electionResults
-						.GetOrAddDistrict(null)
-						.GetOrAddParty(party.PartyId, partyResultCreator);
-					if (districtsBySubscription?.TryGetValue(party.SubscriptionId, out var subscriptionDistricts) == true) {
-						foreach (var district in subscriptionDistricts) {
-							electionResults
-								.GetOrAddDistrict(district.DistrictId, () => new DistrictResult(district.DistrictId, district.DistrictName))
-								.GetOrAddParty(party.PartyId, partyResultCreator);
-						}
-					}
-				}
-			}
 
 			Console.Write("Reading server keys ...");
 			var voteIndex = 0;

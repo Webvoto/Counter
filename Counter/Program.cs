@@ -1,5 +1,6 @@
 ﻿using Counter;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -32,13 +33,17 @@ async static Task runAsync(string[] args) {
 	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
 	var districtsCsvFile = !string.IsNullOrEmpty(districtsCsvPath) ? checkPath(districtsCsvPath) : null;
 
+	// Parties and districts are only needed later, but we'll read them ahead of time to raise exceptions sooner rather than later
+	var parties = partiesCsvFile != null ? PartiesCsvReader.Read(partiesCsvFile) : null;
+	var districts = districtsCsvFile != null ? DistrictsCsvReader.Read(districtsCsvFile) : null;
+
 	var degreeOfParallelismVar = Environment.GetEnvironmentVariable("COUNTER_WORKERS");
 	var degreeOfParallelism = !string.IsNullOrEmpty(degreeOfParallelismVar) ? int.Parse(degreeOfParallelismVar) : 32;
 	Console.WriteLine($"Degree of parallelism: {degreeOfParallelism}");
 
 	var counter = new VoteCounter();
 	counter.Initialize(signatureCertificateFile, decryptionKeyFile);
-	var results = await counter.CountAsync(votesCsvFile, partiesCsvFile, districtsCsvFile, degreeOfParallelism);
+	var results = await counter.CountAsync(votesCsvFile, degreeOfParallelism);
 
 	if (results == null) {
 		// decryption key not given, votes only checked
@@ -46,9 +51,10 @@ async static Task runAsync(string[] args) {
 		return;
 	}
 
+	var resultsWriter = new ResultsCsvWriter(parties, districts);
 	byte[] resultsFileBytes;
 	using (var buffer = new MemoryStream()) {
-		ResultsCsvWriter.Write(results, buffer);
+		resultsWriter.Write(results, buffer);
 		resultsFileBytes = buffer.ToArray();
 	}
 
