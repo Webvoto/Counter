@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace Counter {
@@ -14,6 +15,8 @@ namespace Counter {
 			=> electionResults.GetOrAdd(electionId, k => creator != null ? creator.Invoke() : new ElectionResult(electionId));
 			
 		public IEnumerable<ElectionResult> ElectionResults => electionResults.Values;
+
+		public IEnumerable<ElectionResult> ElectionResultsOrdered => ElectionResults.OrderBy(e => e.DisplayName);
 	}
 
 	public class ElectionResult {
@@ -41,6 +44,8 @@ namespace Counter {
 			=> partyResults.GetOrAdd(identifier, k => creator != null ? creator.Invoke() : new PartyResult(identifier));
 
 		public IEnumerable<PartyResult> PartyResults => partyResults.Values;
+
+		public IEnumerable<PartyResult> PartyResultsOrdered => PartyResults.OrderBy(p => p.IsBlankOrNull ? 1 : 0).ThenByDescending(p => p.Votes);
 	}
 
 	public class PartyResult {

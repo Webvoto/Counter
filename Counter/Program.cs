@@ -47,14 +47,26 @@ async static Task runAsync(string[] args) {
 	var formattedResults = formatResults(results);
 	Console.Write(formattedResults);
 
+	var timestamp = DateTime.Now.ToString("yyyy-MM-dd-HHmmss");
+
+	var resultsTxtPath = $"results-{timestamp}.txt";
+	File.WriteAllText(resultsTxtPath, formattedResults, Encoding.UTF8);
+	Console.WriteLine($"TXT results written to {resultsTxtPath}");
+
+	var resultsCsvPath = $"results-{timestamp}.csv";
+	using (var csvOutFile = File.Create(resultsCsvPath)) {
+		ResultsCsvWriter.Write(results, csvOutFile);
+	}
+	Console.WriteLine($"CSV results written to {resultsCsvPath}");
+
 	var signatureKeyParamsFile = new FileInfo(Path.ChangeExtension(signatureCertificateFile.FullName, ".json"));
 	if (signatureKeyParamsFile.Exists) {
 		Console.WriteLine("Signing results ...");
 		var signatureKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(signatureKeyParamsFile.FullName));
 		var webVaultClient = new WebVaultClient(signatureKeyParams.Endpoint, signatureKeyParams.ApiKey);
 		var cms = await webVaultClient.SignCadesAsync(signatureKeyParams.KeyId, Encoding.UTF8.GetBytes(formattedResults), File.ReadAllBytes(signatureCertificateFile.FullName));
-		var cmsPath = $"signed-results-{DateTime.Now:yyyy-MM-dd-HHmmss}.p7s";
-		File.WriteAllBytes($"signed-results-{DateTime.Now:yyyy-MM-dd-HHmmss}.p7s", cms);
+		var cmsPath = $"signed-results-{timestamp}.p7s";
+		File.WriteAllBytes($"signed-results-{timestamp}.p7s", cms);
 		Console.WriteLine($"Signed results written to '{cmsPath}'");
 	}
 }
@@ -74,7 +86,7 @@ static string formatResults(ElectionResultCollection results) {
 	var partyHeader = "Chapa";
 	var votesHeader = "Votos";
 
-	foreach (var election in results.ElectionResults.OrderBy(e => e.DisplayName)) {
+	foreach (var election in results.ElectionResultsOrdered) {
 
 		var partyColumnLen = Math.Max(partyHeader.Length, election.PartyResults.Max(p => p.DisplayName.Length));
 		var votesColumnLen = Math.Max(votesHeader.Length, election.PartyResults.Max(p => p.Votes.ToString("N0").Length));
@@ -89,7 +101,7 @@ static string formatResults(ElectionResultCollection results) {
 		text.AppendLine($"| {partyHeader.PadRight(partyColumnLen)} | {votesHeader.PadLeft(votesColumnLen)} |");
 		text.AppendLine($"+-{new string('-', partyColumnLen)}-+-{new string('-', votesColumnLen)}-+");
 
-		foreach (var party in election.PartyResults.OrderBy(p => p.IsBlankOrNull ? 1 : 0).ThenByDescending(p => p.Votes)) {
+		foreach (var party in election.PartyResultsOrdered) {
 			text.AppendLine($"| {party.DisplayName.PadRight(partyColumnLen)} | {party.Votes.ToString("N0").PadLeft(votesColumnLen)} |");
 		}
 
