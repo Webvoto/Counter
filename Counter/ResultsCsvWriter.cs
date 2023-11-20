@@ -67,6 +67,8 @@ namespace Counter {
 			
 			var districtLabel = getDistrictLabel(districtResult);
 
+			// Check which parties need to be nullified
+
 			var nullifiedPartyResults = new List<PartyResult>();
 
 			foreach (var partyResult in districtResult.PartyResults) {
@@ -77,6 +79,8 @@ namespace Counter {
 					}
 				}
 			}
+
+			// Yield parties/blanks/nulls (except nullified ones)
 
 			foreach (var partyResult in districtResult.PartyResults.Except(nullifiedPartyResults)) {
 				yield return new ResultCsvRecord {
@@ -89,6 +93,8 @@ namespace Counter {
 					Votes = partyResult.Votes + (partyResult.IsNull ? nullifiedPartyResults.Sum(npr => npr.Votes) : 0),
 				};
 			}
+
+			// Yield enabled parties without votes (not in `districtResult.PartyResults`)
 
 			if (parties != null) {
 				foreach (var party in parties.Where(p => p.IsEnabled && p.ElectionId.Equals(electionId, StringComparison.OrdinalIgnoreCase))) {
@@ -106,6 +112,8 @@ namespace Counter {
 				}
 			}
 
+			// Yield blanks row if not already yielded
+
 			if (!districtResult.PartyResults.Any(p => p.Identifier.Equals(PartyResult.BlankIdentifier, StringComparison.OrdinalIgnoreCase))) {
 				yield return new ResultCsvRecord {
 					ElectionId = electionId,
@@ -117,6 +125,8 @@ namespace Counter {
 					Votes = 0,
 				};
 			}
+
+			// Yield nulls row if not already yielded
 
 			if (!districtResult.PartyResults.Any(p => p.Identifier.Equals(PartyResult.NullIdentifier, StringComparison.OrdinalIgnoreCase))) {
 				yield return new ResultCsvRecord {
