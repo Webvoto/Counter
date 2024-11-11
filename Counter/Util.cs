@@ -1,7 +1,9 @@
-﻿using System;
+﻿using CsvHelper.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Counter {
@@ -29,5 +31,12 @@ namespace Counter {
 			var base64 = string.Join("", lines.Where(l => !l.StartsWith("---")));
 			return Convert.FromBase64String(base64);
 		}
+
+		public static CsvConfiguration CsvConfiguration => new CsvConfiguration(Thread.CurrentThread.CurrentCulture) {
+			Delimiter = ";",
+			HasHeaderRecord = true,
+			IgnoreBlankLines = true,
+			TrimOptions = TrimOptions.Trim,
+		};
 	}
 }

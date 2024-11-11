@@ -20,10 +20,9 @@ async static Task runAsync(string[] args) {
 	var votesCsvPath = args.ElementAtOrDefault(1);
 	var decKeyPath = args.ElementAtOrDefault(2);
 	var partiesCsvPath = args.ElementAtOrDefault(3);
-	var districtsCsvPath = args.ElementAtOrDefault(4);
 
 	if (string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(votesCsvPath)) {
-		Console.WriteLine("Syntax: Counter <signature certificate path> <votes CSV path> [<decryption key path>] [<parties CSV path>] [<districts CSV path>]");
+		Console.WriteLine("Syntax: Counter <signature certificate path> <votes CSV path> [<decryption key path>] [<parties CSV path>]");
 		return;
 	}
 
@@ -31,11 +30,9 @@ async static Task runAsync(string[] args) {
 	var votesCsvFile = checkPath(votesCsvPath);
 	var decryptionKeyFile = !string.IsNullOrEmpty(decKeyPath) ? checkPath(decKeyPath) : null;
 	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
-	var districtsCsvFile = !string.IsNullOrEmpty(districtsCsvPath) ? checkPath(districtsCsvPath) : null;
 
-	// Parties and districts are only needed later, but we'll read them ahead of time to raise exceptions sooner rather than later
+	// Parties are only needed later, but we'll read them ahead of time to raise exceptions sooner rather than later
 	var parties = partiesCsvFile != null ? PartiesCsvReader.Read(partiesCsvFile) : null;
-	var districts = districtsCsvFile != null ? DistrictsCsvReader.Read(districtsCsvFile) : null;
 
 	var degreeOfParallelismVar = Environment.GetEnvironmentVariable("COUNTER_WORKERS");
 	var degreeOfParallelism = !string.IsNullOrEmpty(degreeOfParallelismVar) ? int.Parse(degreeOfParallelismVar) : 32;
@@ -51,7 +48,7 @@ async static Task runAsync(string[] args) {
 		return;
 	}
 
-	var resultsWriter = new ResultsCsvWriter(parties, districts);
+	var resultsWriter = new ResultsCsvWriter(parties);
 	byte[] resultsFileBytes;
 	using (var buffer = new MemoryStream()) {
 		resultsWriter.Write(results, buffer);

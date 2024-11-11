@@ -1,29 +1,14 @@
-﻿using CsvHelper;
+using CsvHelper;
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Counter {
 
 	public class VoteCsvRecord {
-
-		public int PoolId { get; set; }
-
-		public int Slot { get; set; }
-
 		public string Value { get; set; }
 
 		public string CmsSignature { get; set; }
-
-		public string ServerSignature { get; set; }
-
-		public int ServerInstanceId { get; set; }
-
-		public string ServerPublicKey { get; set; }
 	}
 
 	public class VotesCsvReader : IDisposable {
@@ -35,7 +20,7 @@ namespace Counter {
 		public static VotesCsvReader Open(FileInfo file) {
 			var stream = file.OpenRead();
 			var streamReader = new StreamReader(stream);
-			var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture /* default in SSMS is exporting with commas regardless of the OS culture */);
+			var csvReader = new CsvReader(streamReader, Util.CsvConfiguration);
 			return new VotesCsvReader(stream, streamReader, csvReader);
 		}
 

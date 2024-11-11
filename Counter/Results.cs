@@ -19,28 +19,11 @@ namespace Counter {
 
 	public class ElectionResult {
 
-		private readonly ConcurrentDictionary<string, DistrictResult> districtResults;
-
-		public string Id { get; }
-
-		public ElectionResult(string id) {
-			Id = id;
-			districtResults = new ConcurrentDictionary<string, DistrictResult>(StringComparer.InvariantCultureIgnoreCase);
-		}
-		
-		public DistrictResult GetOrAddDistrict(string id)
-			=> districtResults.GetOrAdd(id ?? "", new DistrictResult(id));
-
-		public IEnumerable<DistrictResult> DistrictResults => districtResults.Values;
-	}
-
-	public class DistrictResult {
-
 		private readonly ConcurrentDictionary<string, PartyResult> partyResults;
 
 		public string Id { get; }
 
-		public DistrictResult(string id) {
+		public ElectionResult(string id) {
 			Id = id;
 			partyResults = new ConcurrentDictionary<string, PartyResult>(StringComparer.InvariantCultureIgnoreCase);
 		}
