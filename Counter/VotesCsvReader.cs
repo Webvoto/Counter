@@ -13,7 +13,7 @@ namespace Counter {
 
 		public int PoolId { get; set; }
 
-		public int Slot { get; set; }
+		public int SlotNumber { get; set; }
 
 		public string Value { get; set; }
 
@@ -35,7 +35,8 @@ namespace Counter {
 		public static VotesCsvReader Open(FileInfo file) {
 			var stream = file.OpenRead();
 			var streamReader = new StreamReader(stream);
-			var csvReader = new CsvReader(streamReader, CultureInfo.InvariantCulture /* default in SSMS is exporting with commas regardless of the OS culture */);
+			var useInvariantCulture = bool.TryParse(Environment.GetEnvironmentVariable("USE_INVARIANT_CULTURE_FOR_VOTES_CSV"), out var b) && b;
+			var csvReader = new CsvReader(streamReader, useInvariantCulture ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
 			return new VotesCsvReader(stream, streamReader, csvReader);
 		}
 

@@ -73,7 +73,7 @@ namespace Counter {
 
 			foreach (var partyResult in districtResult.PartyResults) {
 				if (!partyResult.IsBlankOrNull) {
-					var party = parties?.FirstOrDefault(p => p.PartyId.Equals(partyResult.Identifier, StringComparison.OrdinalIgnoreCase));
+					var party = parties?.FirstOrDefault(p => p.Id.Equals(partyResult.Identifier, StringComparison.OrdinalIgnoreCase));
 					if (party != null && !party.IsEnabled) {
 						nullifiedPartyResults.Add(partyResult);
 					}
@@ -97,14 +97,14 @@ namespace Counter {
 			// Yield enabled parties without votes (not in `districtResult.PartyResults`)
 
 			if (parties != null) {
-				foreach (var party in parties.Where(p => p.IsEnabled && p.ElectionId.Equals(electionId, StringComparison.OrdinalIgnoreCase))) {
-					if (!districtResult.PartyResults.Any(r => r.Identifier.Equals(party.PartyId, StringComparison.OrdinalIgnoreCase))) {
+				foreach (var party in parties.Where(p => p.IsEnabled && p.QuestionId.Equals(electionId, StringComparison.OrdinalIgnoreCase))) {
+					if (!districtResult.PartyResults.Any(r => r.Identifier.Equals(party.Id, StringComparison.OrdinalIgnoreCase))) {
 						yield return new ResultCsvRecord {
 							ElectionId = electionId,
 							ElectionLabel = electionLabel,
 							DistrictId = districtResult.Id,
 							DistrictLabel = districtLabel,
-							PartyIdentifier = party.PartyId,
+							PartyIdentifier = party.Id,
 							PartyLabel = getPartyLabel(party),
 							Votes = 0,
 						};
@@ -142,8 +142,8 @@ namespace Counter {
 		}
 
 		private string getElectionLabel(ElectionResult electionResult) {
-			var partyFromElection = parties?.FirstOrDefault(p => p.ElectionId.Equals(electionResult.Id, StringComparison.OrdinalIgnoreCase));
-			return partyFromElection != null ? $"{partyFromElection.SubscriptionName} - {partyFromElection.ElectionName}" : null;
+			var partyFromElection = parties?.FirstOrDefault(p => p.QuestionId.Equals(electionResult.Id, StringComparison.OrdinalIgnoreCase));
+			return partyFromElection != null ? $"{partyFromElection.SessionName} - {partyFromElection.QuestionName}" : null;
 		}
 
 		private string getDistrictLabel(DistrictResult districtResult)
@@ -159,19 +159,19 @@ namespace Counter {
 				return NullVotesLabel;
 			}
 
-			var party = parties?.FirstOrDefault(p => p.PartyId.Equals(partyResult.Identifier, StringComparison.OrdinalIgnoreCase));
+			var party = parties?.FirstOrDefault(p => p.Id.Equals(partyResult.Identifier, StringComparison.OrdinalIgnoreCase));
 
 			return party != null ? getPartyLabel(party) : null;
 		}
 
 		private string getPartyLabel(PartyCsvRecord party) {
 
-			var hasName = !string.IsNullOrEmpty(party.PartyName);
-			var hasNumber = !string.IsNullOrEmpty(party.PartyNumber) && !party.PartyNumber.Equals("NULL", StringComparison.OrdinalIgnoreCase);
+			var hasName = !string.IsNullOrEmpty(party.Name);
+			var hasNumber = !string.IsNullOrEmpty(party.Identifier) && !party.Identifier.Equals("NULL", StringComparison.OrdinalIgnoreCase);
 
-			return hasName && hasNumber ? $"{party.PartyNumber}. {party.PartyName}"
-				: hasName ? party.PartyName
-				: party.PartyNumber;
+			return hasName && hasNumber ? $"{party.Identifier}. {party.Name}"
+				: hasName ? party.Name
+				: party.Identifier;
 		}
 	}
 }

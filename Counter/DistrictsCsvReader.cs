@@ -26,7 +26,7 @@ namespace Counter {
 		public static List<DistrictCsvRecord> Read(FileInfo file) {
 			using var stream = file.OpenRead();
 			using var streamReader = new StreamReader(stream);
-			using var csvReader = new CsvReader(streamReader, Thread.CurrentThread.CurrentCulture);
+			using var csvReader = new CsvReader(streamReader, CultureInfo.CurrentCulture);
 			return csvReader.GetRecords<DistrictCsvRecord>().ToList();
 		}
 	}

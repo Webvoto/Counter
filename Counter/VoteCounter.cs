@@ -12,7 +12,7 @@ namespace Counter {
 
 	public class VoteCounter {
 
-		private record Vote(int PoolId, int Slot, byte[] EncodedValue, byte[] CmsSignature, byte[] ServerSignature, int ServerInstanceId, Asn1Vote Value);
+		private record Vote(int PoolId, int SlotNumber, byte[] EncodedValue, byte[] CmsSignature, byte[] ServerSignature, int ServerInstanceId, VoteValue Value);
 
 		private class VoteBatch {
 
@@ -30,7 +30,7 @@ namespace Counter {
 
 		private const int BatchSize = 1000;
 
-		private readonly Dictionary<int, RSA> serverPublicKeys = new Dictionary<int, RSA>();
+		private readonly Dictionary<int, ECDsa> serverPublicKeys = new();
 		private RSA decryptionKey;
 		private WebVaultKeyParameters decryptionKeyParams;
 		private WebVaultClient webVaultClient;
@@ -39,7 +39,7 @@ namespace Counter {
 
 		public void Initialize(FileInfo signatureCertificateFile, FileInfo decryptionKeyFile) {
 			Console.WriteLine("Initializing ...");
-			signatureCertificate = new X509Certificate2(File.ReadAllBytes(signatureCertificateFile.FullName));
+			signatureCertificate = X509CertificateLoader.LoadCertificateFromFile(signatureCertificateFile.FullName);
 			signatureCertificatePublicKey = signatureCertificate.GetRSAPublicKey();
 			if (decryptionKeyFile != null) {
 				if (decryptionKeyFile.Extension.Equals(".pem", StringComparison.InvariantCultureIgnoreCase)) {
@@ -159,7 +159,7 @@ namespace Counter {
 
 		private async Task decryptVotesAsync(ChannelReader<VoteBatch> inQueue, ChannelWriter<VoteBatch> outQueue) {
 			await foreach (var batch in inQueue.ReadAllAsync()) {
-				batch.DecryptionTable = await decryptChoicesAsync(batch.EncryptedVotes);
+				batch.DecryptionTable = await decryptContentEncryptionKeysAsync(batch.EncryptedVotes);
 				Console.Write($"[{batch.Index:D3}D]");
 				await outQueue.WriteAsync(batch);
 			}
@@ -186,7 +186,7 @@ namespace Counter {
 
 		private Vote decodeVote(VoteCsvRecord csvEntry) {
 			var poolId = csvEntry.PoolId;
-			var slot = csvEntry.Slot;
+			var slot = csvEntry.SlotNumber;
 			var encodedValue = Util.DecodeHex(csvEntry.Value);
 			var cmsSignature = Util.DecodeHex(csvEntry.CmsSignature);
 			var serverSignature = Util.DecodeHex(csvEntry.ServerSignature);
@@ -194,8 +194,8 @@ namespace Counter {
 			return new Vote(poolId, slot, encodedValue, cmsSignature, serverSignature, csvEntry.ServerInstanceId, value);
 		}
 
-		private async Task<DecryptionTable> decryptChoicesAsync(List<Vote> votes) {
-			var ciphers = votes.SelectMany(v => v.Value.Choices.Select(c => c.EncryptedChoice));
+		private async Task<DecryptionTable> decryptContentEncryptionKeysAsync(List<Vote> votes) {
+			var ciphers = votes.Select(v => getEncryptedCek(v.Value.EncryptedChoices));
 			var plaintexts = decryptionKey != null
 				? ciphers.Select(c => decryptionKey.Decrypt(c, RSAEncryptionPadding.OaepSHA256))
 				: await webVaultClient.DecryptBatchAsync(decryptionKeyParams.KeyId, ciphers);
@@ -205,56 +205,99 @@ namespace Counter {
 		private void checkVote(Vote vote) {
 
 			// Check server signature
-			var serverSigOk = verifyServerSignature(serverPublicKeys[vote.ServerInstanceId], vote.CmsSignature, vote.ServerSignature)
-				|| serverPublicKeys.Any(pk => verifyServerSignature(pk.Value, vote.CmsSignature, vote.ServerSignature));
+			var serverSigOk = verifyServerSignature(serverPublicKeys[vote.ServerInstanceId], vote.CmsSignature, vote.ServerSignature);
 			if (!serverSigOk) {
-				throw new Exception($"Vote on pool {vote.PoolId} slot {vote.Slot} has an invalid server signature");
+				throw new Exception($"Vote on pool {vote.PoolId} slot {vote.SlotNumber} has an invalid server signature");
 			}
 
-			var cmsInfo = CmsEncoding.Decode(vote.CmsSignature);
-
-			var expectedMessageDigestValue = HashAlgorithm.Create(cmsInfo.MessageDigest.Algorithm.Name).ComputeHash(vote.EncodedValue);
-			if (!cmsInfo.MessageDigest.Value.SequenceEqual(expectedMessageDigestValue)) {
-				throw new Exception("Message digest mismatch");
-			}
-
-			// Check signing certificate
-			var expectedCertDigestValue = HashAlgorithm.Create(cmsInfo.SigningCertificateDigest.Algorithm.Name).ComputeHash(signatureCertificate.RawData);
-			if (!cmsInfo.SigningCertificateDigest.Value.SequenceEqual(expectedCertDigestValue)) {
-				throw new Exception("Signing certificate mismatch");
-			}
-
-			// Check signature of signed attributes
-			if (!signatureCertificatePublicKey.VerifyHash(cmsInfo.SignedAttributesDigest.Value, cmsInfo.Signature, cmsInfo.SignedAttributesDigest.Algorithm, RSASignaturePadding.Pkcs1)) {
+			// Check signing certificate signature
+			var encodedSignedAttrs = CmsEncoding.EncodeSignedAttributes(SHA256.HashData(vote.EncodedValue), signatureCertificate);
+			if (!signatureCertificatePublicKey.VerifyData(encodedSignedAttrs, vote.CmsSignature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)) {
 				throw new Exception("Signature mismatch");
 			}
 
 			// Check PoolId and Slot integrity
-			if (vote.PoolId != vote.Value.PoolId || vote.Slot != vote.Value.Slot) {
+			if (vote.PoolId != vote.Value.PoolId || vote.SlotNumber != vote.Value.SlotNumber) {
 				throw new Exception("Vote address corruption");
 			}
 		}
 
-		private bool verifyServerSignature(RSA serverPublicKey, byte[] data, byte[] signature)
-			=> serverPublicKey.VerifyData(data, signature, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+		private bool verifyServerSignature(ECDsa serverPublicKey, byte[] data, byte[] signature)
+			=> serverPublicKey.VerifyData(data, signature, HashAlgorithmName.SHA256);
 
-		private void countVote(ElectionResultCollection results, DecryptionTable choiceDecryptions, Vote vote) {
-			foreach (var choice in vote.Value.Choices) {
-				var decryptedChoice = Encoding.UTF8.GetString(choiceDecryptions.GetDecryption(choice.EncryptedChoice));
+		private void countVote(ElectionResultCollection results, DecryptionTable decryptionTable, Vote vote) {
+			var decryptedChoices = decryptChoices(decryptionTable, vote.Value.EncryptedChoices);
+			var decodedChoices = VoteEncoding.DecodeChoices(decryptedChoices);
+			foreach (var choice in decodedChoices) {
 				results
-					.GetOrAddElection(choice.ElectionId)
-					.GetOrAddDistrict(choice.DistrictId)
-					.GetOrAddParty(decryptedChoice)
+					.GetOrAddElection(vote.Value.QuestionId.ToString())
+					.GetOrAddDistrict(vote.Value.MemberDistrictId.ToString())
+					.GetOrAddParty(choice.ToString())
 					.Increment();
 			}
 		}
 
+		private const int EncryptedCekLength = 256; // RSA cryptogram with 2048-bit key
+		private const int ContentEncryptionBlockLength = 16; // AES block length
+
+		private byte[] decryptChoices(DecryptionTable decryptionTable, byte[] cryptogram) {
+
+			/*
+			 * Terminology:
+			 * 
+			 * - CEK: content encryption key (AES-256)
+			 * - CEIV: content encryption IV (AES, 16 bytes)
+			 * - KEK: key encryption key (RSA)
+			 * 
+			 * Format:
+			 * 
+			 * 1. CEK encrypted with KEK (2048-bit RSA encryption, 256 bytes)
+			 * 2. CEIV (16 bytes)
+			 * 3. AES-encrypted content (remaining bytes)
+			 */
+
+			// Check length
+			var encrytedContentLength = cryptogram.Length - EncryptedCekLength - ContentEncryptionBlockLength;
+			if (encrytedContentLength <= 0) {
+				throw new Exception($"The given cryptogram has too few bytes: {cryptogram.Length}");
+			}
+			if (encrytedContentLength % ContentEncryptionBlockLength != 0) {
+				throw new Exception($"The given cryptogram has an encrypted content with inconsistent length: {encrytedContentLength}");
+			}
+
+			// Parse
+			var encryptedCek = getEncryptedCek(cryptogram);
+			var ceiv = cryptogram.Skip(EncryptedCekLength).Take(ContentEncryptionBlockLength).ToArray();
+			var encryptedContent = cryptogram.Skip(EncryptedCekLength + ContentEncryptionBlockLength).ToArray();
+
+			// Get previously decrypted CEK
+			var cek = decryptionTable.GetDecryption(encryptedCek);
+
+			// Decrypt content with CEK
+			using var aes = Aes.Create();
+			aes.KeySize = 256;
+			aes.Mode = CipherMode.CBC;
+			aes.Padding = PaddingMode.PKCS7;
+			aes.Key = cek;
+			aes.IV = ceiv;
+
+			using var decryptor = aes.CreateDecryptor();
+
+			try {
+				return decryptor.TransformFinalBlock(encryptedContent, 0, encryptedContent.Length);
+			} catch (CryptographicException ex) {
+				throw new Exception("The enclosed content cryptogram could not be decrypted", ex);
+			}
+		}
+
+		private byte[] getEncryptedCek(byte[] cryptogram) => cryptogram.Take(EncryptedCekLength).ToArray();
+
 		#region Helper methods
 
-		private RSA getPublicKey(byte[] encodedPublicKey) {
-			var rsa = RSA.Create();
-			rsa.ImportSubjectPublicKeyInfo(encodedPublicKey, out _);
-			return rsa;
+		private ECDsa getPublicKey(byte[] encodedPublicKey) {
+			ECDsa publicKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+			publicKey.ImportSubjectPublicKeyInfo(encodedPublicKey, out _);
+			return publicKey;
 		}
 
 		#endregion

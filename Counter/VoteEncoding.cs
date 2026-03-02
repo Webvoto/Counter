@@ -1,59 +1,81 @@
 ﻿using Org.BouncyCastle.Asn1;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Globalization;
 
 namespace Counter {
 
+	public record VoteValue(int PoolId, int SlotNumber, Guid QuestionId, Guid MemberDistrictId, Guid? VoteBoxId, decimal Shares, Guid VoteEncryptionKeyVersionId, byte[] EncryptedChoices);
+
 	public static class VoteEncoding {
 
-		public static Asn1Vote Decode(byte[] encoded) => new Asn1Vote(new Asn1InputStream(encoded).ReadObject());
-	}
-
-	public class Asn1Vote {
-
-		public Asn1Vote(Asn1Encodable asn1Object) {
-			var seq = (Asn1Sequence)asn1Object;
-			Choices = new Asn1VoteChoiceList(seq[0]);
-			PoolId = ((DerInteger)seq[1]).Value.IntValue;
-			Slot = ((DerInteger)seq[2]).Value.IntValue;
+		public static VoteValue Decode(byte[] encoded) {
+			var encodedVote = new EncodedVote(new Asn1InputStream(encoded).ReadObject());
+			return new VoteValue(
+				encodedVote.PoolId,
+				encodedVote.SlotNumber,
+				new Guid(encodedVote.QuestionId),
+				new Guid(encodedVote.MemberDistrictId),
+				!string.IsNullOrEmpty(encodedVote.VoteBoxId) ? new Guid(encodedVote.VoteBoxId) : null,
+				decimal.Parse(encodedVote.Shares, CultureInfo.InvariantCulture),
+				new Guid(encodedVote.VoteEncryptionKeyVersionId),
+				encodedVote.EncryptedChoices
+			);
 		}
 
-		public Asn1VoteChoiceList Choices { get; }
+		// [Asn1Sequence]
+		private class EncodedVote {
 
-		public int PoolId { get; }
+			// [Asn1SequenceElement(0, Asn1PrimitiveTypes.Integer)]
+			public int PoolId { get; set; }
 
-		public int Slot { get; }
-	}
+			// [Asn1SequenceElement(1, Asn1PrimitiveTypes.Integer)]
+			public int SlotNumber { get; set; }
 
-	public class Asn1VoteChoiceList : List<Asn1VoteChoice> {
+			// [Asn1SequenceElement(2, Asn1PrimitiveTypes.PrintableString)]
+			public string QuestionId { get; set; }
 
-		public Asn1VoteChoiceList(Asn1Encodable asn1Object) : base(decode(asn1Object)) {
-		}
+			// [Asn1SequenceElement(3, Asn1PrimitiveTypes.PrintableString)]
+			public string MemberDistrictId { get; set; }
 
-		private static IEnumerable<Asn1VoteChoice> decode(Asn1Encodable asn1Object) {
-			var seq = (Asn1Sequence)asn1Object;
-			var choices = new List<Asn1VoteChoice>();
-			foreach (var item in seq) {
-				choices.Add(new Asn1VoteChoice(item));
+			// [Asn1SequenceElement(4, Asn1PrimitiveTypes.PrintableString)]
+			public string VoteBoxId { get; set; }
+
+			// [Asn1SequenceElement(5, Asn1PrimitiveTypes.PrintableString)]
+			public string Shares { get; set; }
+
+			// [Asn1SequenceElement(6, Asn1PrimitiveTypes.PrintableString)]
+			public string VoteEncryptionKeyVersionId { get; set; }
+
+			// [Asn1SequenceElement(7, Asn1PrimitiveTypes.OctetString)]
+			public byte[] EncryptedChoices { get; set; }
+
+			public EncodedVote(Asn1Encodable asn1Object) {
+				var seq = (Asn1Sequence)asn1Object;
+				PoolId = ((DerInteger)seq[0]).Value.IntValue;
+				SlotNumber = ((DerInteger)seq[1]).Value.IntValue;
+				QuestionId = ((DerPrintableString)seq[2]).GetString();
+				MemberDistrictId = ((DerPrintableString)seq[3]).GetString();
+				VoteBoxId = ((DerPrintableString)seq[4]).GetString();
+				Shares = ((DerPrintableString)seq[5]).GetString();
+				VoteEncryptionKeyVersionId = ((DerPrintableString)seq[6]).GetString();
+				EncryptedChoices = ((DerOctetString)seq[7]).GetOctets();
 			}
-			return choices;
 		}
-	}
 
-	public class Asn1VoteChoice {
+		public static List<Guid> DecodeChoices(ReadOnlySpan<byte> encodedChoices) {
 
-		public string ElectionId { get; }
+			if (encodedChoices.Length % 16 != 0) {
+				throw new Exception($"Bad encoded choices length: {encodedChoices.Length}");
+			}
 
-		public string DistrictId { get; }
+			var chosenOptionIds = new List<Guid>();
 
-		public byte[] EncryptedChoice { get; }
+			for (var i = 0; i < encodedChoices.Length; i += 16) {
+				chosenOptionIds.Add(new Guid(encodedChoices.Slice(i, 16), true));
+			}
 
-		public Asn1VoteChoice(Asn1Encodable asn1Object) {
-			var seq = (Asn1Sequence)asn1Object;
-			ElectionId = ((DerPrintableString)seq[0]).GetString();
-			DistrictId = ((DerPrintableString)seq[1]).GetString();
-			EncryptedChoice = ((DerOctetString)seq[2]).GetOctets();
+			return chosenOptionIds;
 		}
 	}
 }

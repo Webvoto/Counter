@@ -12,6 +12,9 @@ namespace Counter {
 			if (s == null) {
 				throw new ArgumentNullException(nameof(s));
 			}
+			if (s.StartsWith("0x", StringComparison.OrdinalIgnoreCase)) {
+				s = s[2..];
+			}
 			if (s.Length % 2 != 0) {
 				throw new Exception("Invalid hex string: bad length");
 			}
