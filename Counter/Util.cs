@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Counter {
 	
@@ -32,5 +31,15 @@ namespace Counter {
 			var base64 = string.Join("", lines.Where(l => !l.StartsWith("---")));
 			return Convert.FromBase64String(base64);
 		}
+
+		public static ECDsa GetPublicKey(byte[] encodedPublicKey) {
+			ECDsa publicKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+			publicKey.ImportSubjectPublicKeyInfo(encodedPublicKey, out _);
+			return publicKey;
+		}
+
+		public static bool VerifyServerSignature(ECDsa serverPublicKey, byte[] data, byte[] signature)
+			=> serverPublicKey.VerifyData(data, signature, HashAlgorithmName.SHA256);
+
 	}
 }

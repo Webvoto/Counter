@@ -20,7 +20,8 @@ async static Task runAsync(string[] args) {
 	var votesCsvPath = args.ElementAtOrDefault(1);
 	var decKeyPath = args.ElementAtOrDefault(2);
 	var partiesCsvPath = args.ElementAtOrDefault(3);
-	var districtsCsvPath = args.ElementAtOrDefault(4);
+	var votingEventsCsvPath = args.ElementAtOrDefault(4);
+	var districtsCsvPath = args.ElementAtOrDefault(5);
 
 	if (string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(votesCsvPath)) {
 		Console.WriteLine("Syntax: Counter <signature certificate path> <votes CSV path> [<decryption key path>] [<parties CSV path>] [<districts CSV path>]");
@@ -32,6 +33,7 @@ async static Task runAsync(string[] args) {
 	var decryptionKeyFile = !string.IsNullOrEmpty(decKeyPath) ? checkPath(decKeyPath) : null;
 	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
 	var districtsCsvFile = !string.IsNullOrEmpty(districtsCsvPath) ? checkPath(districtsCsvPath) : null;
+	var votingEventsCsvFile = !string.IsNullOrEmpty(votingEventsCsvPath) ? checkPath(votingEventsCsvPath) : null;
 
 	// Parties and districts are only needed later, but we'll read them ahead of time to raise exceptions sooner rather than later
 	var parties = partiesCsvFile != null ? PartiesCsvReader.Read(partiesCsvFile) : null;
@@ -74,6 +76,17 @@ async static Task runAsync(string[] args) {
 		File.WriteAllBytes($"signed-results-{timestamp}.p7s", cms);
 		Console.WriteLine($"Signed results written to '{cmsPath}'");
 	}
+
+	if (votingEventsCsvFile == null) {
+		return;
+	}
+
+	Console.WriteLine();
+	Console.WriteLine($"Initializing voting events check...");
+	var eventValidator = new VotingEventValidator();
+	eventValidator.Initialize();
+	await eventValidator.ValidateAsync(votingEventsCsvFile, degreeOfParallelism);
+
 }
 
 static FileInfo checkPath(string path) {

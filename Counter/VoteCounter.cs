@@ -77,7 +77,7 @@ namespace Counter {
 			using (var votesCsvReader = VotesCsvReader.Open(votesCsvFile)) {
 				foreach (var voteRecord in votesCsvReader.GetRecords()) {
 					if (!serverPublicKeys.ContainsKey(voteRecord.ServerInstanceId)) {
-						serverPublicKeys[voteRecord.ServerInstanceId] = getPublicKey(Util.DecodeHex(voteRecord.ServerPublicKey));
+						serverPublicKeys[voteRecord.ServerInstanceId] = Util.GetPublicKey(Util.DecodeHex(voteRecord.ServerPublicKey));
 						Console.Write(".");
 					}
 					if (++voteIndex % 1000 == 0) {
@@ -205,7 +205,7 @@ namespace Counter {
 		private void checkVote(Vote vote) {
 
 			// Check server signature
-			var serverSigOk = verifyServerSignature(serverPublicKeys[vote.ServerInstanceId], vote.CmsSignature, vote.ServerSignature);
+			var serverSigOk = Util.VerifyServerSignature(serverPublicKeys[vote.ServerInstanceId], vote.CmsSignature, vote.ServerSignature);
 			if (!serverSigOk) {
 				throw new Exception($"Vote on pool {vote.PoolId} slot {vote.SlotNumber} has an invalid server signature");
 			}
@@ -221,9 +221,6 @@ namespace Counter {
 				throw new Exception("Vote address corruption");
 			}
 		}
-
-		private bool verifyServerSignature(ECDsa serverPublicKey, byte[] data, byte[] signature)
-			=> serverPublicKey.VerifyData(data, signature, HashAlgorithmName.SHA256);
 
 		private void countVote(ElectionResultCollection results, DecryptionTable decryptionTable, Vote vote) {
 			var decryptedChoices = decryptChoices(decryptionTable, vote.Value.EncryptedChoices);
@@ -291,15 +288,5 @@ namespace Counter {
 		}
 
 		private byte[] getEncryptedCek(byte[] cryptogram) => cryptogram.Take(EncryptedCekLength).ToArray();
-
-		#region Helper methods
-
-		private ECDsa getPublicKey(byte[] encodedPublicKey) {
-			ECDsa publicKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-			publicKey.ImportSubjectPublicKeyInfo(encodedPublicKey, out _);
-			return publicKey;
-		}
-
-		#endregion
 	}
 }
