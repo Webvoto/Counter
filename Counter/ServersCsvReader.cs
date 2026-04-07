@@ -10,7 +10,7 @@ namespace Counter {
 
 		public int Id { get; set; }
 
-		public int ModuleName { get; set; }
+		public string ModuleName { get; set; }
 
 		public string ModuleVersion { get; set; }
 
@@ -18,7 +18,7 @@ namespace Counter {
 
 		public string MachineName { get; set; }
 
-		public int DateStartedUtc { get; set; }
+		public string DateStartedUtc { get; set; }
 
 		public string PublicKey { get; set; }
 	}

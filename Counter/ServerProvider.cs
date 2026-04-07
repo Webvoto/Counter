@@ -2,45 +2,43 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
-using System.Text;
 
-namespace Counter {
-	public class ServerProvider {
+namespace Counter; 
 
-		public class Server {
+public class ServerProvider {
 
-			public int Id { get; set; }
+	public class Server {
 
-			public int VotingEventSignatureVersion { get; set; }
+		public int Id { get; set; }
 
-			public ECDsa PublicKey { get; set; }
-		}
+		public int VotingEventSignatureVersion { get; set; }
 
-		private readonly Dictionary<int, Server> servers = new();
+		public ECDsa PublicKey { get; set; }
+	}
 
-		public void Initialize(FileInfo serversCsvFile) {
-			Console.Write("Reading server keys ...");
-			using (var votesCsvReader = ServersCsvReader.Open(serversCsvFile)) {
-				foreach (var voteRecord in votesCsvReader.GetRecords()) {
-					if (!servers.ContainsKey(voteRecord.Id)) {
-						servers[voteRecord.Id] = new Server() {
-							Id = voteRecord.Id,
-							VotingEventSignatureVersion = voteRecord.VotingEventSignatureVersion,
-							PublicKey = Util.GetPublicKey(Util.DecodeHex(voteRecord.PublicKey))
-						};
-						Console.Write(".");
-					}
+	private readonly Dictionary<int, Server> servers = new();
+
+	public void Initialize(FileInfo serversCsvFile) {
+		Console.Write("Reading servers ...");
+		using (var serverCsvReader = ServersCsvReader.Open(serversCsvFile)) {
+			foreach (var serverRecord in serverCsvReader.GetRecords()) {
+				if (!servers.ContainsKey(serverRecord.Id)) {
+					servers[serverRecord.Id] = new Server() {
+						Id = serverRecord.Id,
+						VotingEventSignatureVersion = serverRecord.VotingEventSignatureVersion,
+						PublicKey = Util.GetPublicKey(Util.DecodeHex(serverRecord.PublicKey))
+					};
 				}
 			}
 		}
+	}
 
-		public Server GetRequiredServer(int serverId) {
+	public Server GetRequiredServer(int serverId) {
 
-			if (!servers.TryGetValue(serverId, out Server server)) {
-				throw new Exception($"Server not provided {serverId}");
-			}
-
-			return server;
+		if (!servers.TryGetValue(serverId, out Server server)) {
+			throw new Exception($"Server not provided {serverId}");
 		}
+
+		return server;
 	}
 }

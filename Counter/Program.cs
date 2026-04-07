@@ -47,7 +47,8 @@ async static Task runAsync(string[] args) {
 
 	var serverProvider = new ServerProvider();
 	serverProvider.Initialize(serversCsvFile);
-
+	
+	Console.WriteLine();
 	var counter = new VoteCounter(serverProvider);
 	counter.Initialize(signatureCertificateFile, decryptionKeyFile);
 	var results = await counter.CountAsync(votesCsvFile, degreeOfParallelism);
