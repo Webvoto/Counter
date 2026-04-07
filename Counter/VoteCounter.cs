@@ -30,12 +30,16 @@ namespace Counter {
 
 		private const int BatchSize = 1000;
 
-		private readonly Dictionary<int, ECDsa> serverPublicKeys = new();
+		private readonly ServerProvider serverProvider;
 		private RSA decryptionKey;
 		private WebVaultKeyParameters decryptionKeyParams;
 		private WebVaultClient webVaultClient;
 		private X509Certificate2 signatureCertificate;
 		private RSA signatureCertificatePublicKey;
+
+		public VoteCounter(ServerProvider serverProvider) {
+			this.serverProvider = serverProvider;
+		}
 
 		public void Initialize(FileInfo signatureCertificateFile, FileInfo decryptionKeyFile) {
 			Console.WriteLine("Initializing ...");
@@ -71,21 +75,6 @@ namespace Counter {
 		public async Task<ElectionResultCollection> CountAsync(FileInfo votesCsvFile, int degreeOfParallelism) {
 
 			var results = new ElectionResultCollection();
-
-			Console.Write("Reading server keys ...");
-			var voteIndex = 0;
-			using (var votesCsvReader = VotesCsvReader.Open(votesCsvFile)) {
-				foreach (var voteRecord in votesCsvReader.GetRecords()) {
-					if (!serverPublicKeys.ContainsKey(voteRecord.ServerInstanceId)) {
-						serverPublicKeys[voteRecord.ServerInstanceId] = Util.GetPublicKey(Util.DecodeHex(voteRecord.ServerPublicKey));
-						Console.Write(".");
-					}
-					if (++voteIndex % 1000 == 0) {
-						Console.Write(".");
-					}
-				}
-			}
-			Console.WriteLine();
 
 			if (decryptionKey != null || decryptionKeyParams != null) {
 
@@ -205,7 +194,9 @@ namespace Counter {
 		private void checkVote(Vote vote) {
 
 			// Check server signature
-			var serverSigOk = Util.VerifyServerSignature(serverPublicKeys[vote.ServerInstanceId], vote.CmsSignature, vote.ServerSignature);
+			var server = serverProvider.GetRequiredServer(vote.ServerInstanceId);
+
+			var serverSigOk = Util.VerifyServerSignature(server.PublicKey, vote.CmsSignature, vote.ServerSignature);
 			if (!serverSigOk) {
 				throw new Exception($"Vote on pool {vote.PoolId} slot {vote.SlotNumber} has an invalid server signature");
 			}

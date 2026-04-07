@@ -13,8 +13,6 @@ namespace Counter {
 		// Utils
 		public int ServerInstanceId { get; set; }
 
-		public string ServerPublicKey { get; set; }
-
 		// V1
 		public string Id { get; set; }
 		

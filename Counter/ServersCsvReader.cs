@@ -3,49 +3,48 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Counter {
 
-	public class VoteCsvRecord {
+	public class ServerCsvRecord {
 
-		public int PoolId { get; set; }
+		public int Id { get; set; }
 
-		public int SlotNumber { get; set; }
+		public int ModuleName { get; set; }
 
-		public string Value { get; set; }
+		public string ModuleVersion { get; set; }
 
-		public string CmsSignature { get; set; }
+		public int VotingEventSignatureVersion { get; set; }
 
-		public string ServerSignature { get; set; }
+		public string MachineName { get; set; }
 
-		public int ServerInstanceId { get; set; }
+		public int DateStartedUtc { get; set; }
+
+		public string PublicKey { get; set; }
 	}
 
-	public class VotesCsvReader : IDisposable {
+	public class ServersCsvReader : IDisposable {
 
 		private readonly Stream stream;
 		private readonly StreamReader streamReader;
 		private readonly CsvReader csvReader;
 
-		public static VotesCsvReader Open(FileInfo file) {
+		public static ServersCsvReader Open(FileInfo file) {
 			var stream = file.OpenRead();
 			var streamReader = new StreamReader(stream);
 			var useInvariantCulture = bool.TryParse(Environment.GetEnvironmentVariable("USE_INVARIANT_CULTURE_FOR_VOTES_CSV"), out var b) && b;
 			var csvReader = new CsvReader(streamReader, useInvariantCulture ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
-			return new VotesCsvReader(stream, streamReader, csvReader);
+			return new ServersCsvReader(stream, streamReader, csvReader);
 		}
 
-		private VotesCsvReader(Stream stream, StreamReader streamReader, CsvReader csvReader) {
+		private ServersCsvReader(Stream stream, StreamReader streamReader, CsvReader csvReader) {
 			this.stream = stream;
 			this.streamReader = streamReader;
 			this.csvReader = csvReader;
 		}
 
-		public IEnumerable<VoteCsvRecord> GetRecords()
-			=> csvReader.GetRecords<VoteCsvRecord>();
+		public IEnumerable<ServerCsvRecord> GetRecords()
+			=> csvReader.GetRecords<ServerCsvRecord>();
 
 		public void Dispose() {
 			csvReader.Dispose();

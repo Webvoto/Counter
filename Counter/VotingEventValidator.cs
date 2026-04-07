@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -40,29 +40,13 @@ namespace Counter {
 			}
 		}
 
-		private readonly Dictionary<int, ECDsa> serverPublicKeys = new();
-		private int votingEventSignatureVersion;
+		private readonly ServerProvider serverProvider;
 
-		public void Initialize() {
-			readVotingEventSignatureVersion();
+		public VotingEventValidator(ServerProvider serverProvider) {
+			this.serverProvider = serverProvider;
 		}
 
 		public async Task ValidateAsync(FileInfo eventsCsvFile, int degreeOfParallelism) {
-			Console.Write("Reading event server keys ...");
-			var eventIndex = 0;
-			using (var eventsCsvReader = VotingEventsCsvReader.Open(eventsCsvFile)) {
-				foreach (var eventRecord in eventsCsvReader.GetRecords()) {
-					if (!serverPublicKeys.ContainsKey(eventRecord.ServerInstanceId)) {
-						serverPublicKeys[eventRecord.ServerInstanceId] = Util.GetPublicKey(Util.DecodeHex(eventRecord.ServerPublicKey));
-						Console.Write(".");
-					}
-					if (++eventIndex % 1000 == 0) {
-						Console.Write(".");
-					}
-				}
-			}
-			Console.WriteLine();
-
 			var stats = new CheckStats();
 			var verificationQueue = Channel.CreateBounded<EventBatch>(degreeOfParallelism);
 			var verificationTasks = new List<Task>();
@@ -81,13 +65,6 @@ namespace Counter {
 			Console.WriteLine(" DONE");
 
 			logResults(stats);
-		}
-
-		private void readVotingEventSignatureVersion() {
-			Console.WriteLine("Please provide voting event signature version:");
-			while (!int.TryParse(Console.ReadLine(), out votingEventSignatureVersion)) {
-				Console.WriteLine("Invalid value. Please enter a valid number:");
-			}
 		}
 
 		private async Task checkBatchAsync(ChannelReader<EventBatch> reader, CheckStats stats) {

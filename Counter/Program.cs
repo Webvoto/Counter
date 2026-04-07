@@ -17,11 +17,12 @@ try {
 async static Task runAsync(string[] args) {
 
 	var sigCertPath = args.ElementAtOrDefault(0);
-	var votesCsvPath = args.ElementAtOrDefault(1);
-	var decKeyPath = args.ElementAtOrDefault(2);
-	var partiesCsvPath = args.ElementAtOrDefault(3);
-	var votingEventsCsvPath = args.ElementAtOrDefault(4);
-	var districtsCsvPath = args.ElementAtOrDefault(5);
+	var serversCsvPath = args.ElementAtOrDefault(1);
+	var votesCsvPath = args.ElementAtOrDefault(2);
+	var decKeyPath = args.ElementAtOrDefault(3);
+	var partiesCsvPath = args.ElementAtOrDefault(4);
+	var votingEventsCsvPath = args.ElementAtOrDefault(5);
+	var districtsCsvPath = args.ElementAtOrDefault(6);
 
 	if (string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(votesCsvPath)) {
 		Console.WriteLine("Syntax: Counter <signature certificate path> <votes CSV path> [<decryption key path>] [<parties CSV path>] [<districts CSV path>]");
@@ -29,6 +30,7 @@ async static Task runAsync(string[] args) {
 	}
 
 	var signatureCertificateFile = checkPath(sigCertPath);
+	var serversCsvFile = checkPath(serversCsvPath);
 	var votesCsvFile = checkPath(votesCsvPath);
 	var decryptionKeyFile = !string.IsNullOrEmpty(decKeyPath) ? checkPath(decKeyPath) : null;
 	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
@@ -43,7 +45,10 @@ async static Task runAsync(string[] args) {
 	var degreeOfParallelism = !string.IsNullOrEmpty(degreeOfParallelismVar) ? int.Parse(degreeOfParallelismVar) : 32;
 	Console.WriteLine($"Degree of parallelism: {degreeOfParallelism}");
 
-	var counter = new VoteCounter();
+	var serverProvider = new ServerProvider();
+	serverProvider.Initialize(serversCsvFile);
+
+	var counter = new VoteCounter(serverProvider);
 	counter.Initialize(signatureCertificateFile, decryptionKeyFile);
 	var results = await counter.CountAsync(votesCsvFile, degreeOfParallelism);
 
@@ -83,8 +88,7 @@ async static Task runAsync(string[] args) {
 
 	Console.WriteLine();
 	Console.WriteLine($"Initializing voting events check...");
-	var eventValidator = new VotingEventValidator();
-	eventValidator.Initialize();
+	var eventValidator = new VotingEventValidator(serverProvider);
 	await eventValidator.ValidateAsync(votingEventsCsvFile, degreeOfParallelism);
 
 }
