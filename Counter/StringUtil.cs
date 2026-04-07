@@ -17,7 +17,6 @@ public enum StringNormalizations {
 	NormalizeWhiteSpaces = 1 << 4,
 	RemoveDiacritics = 1 << 5,
 	CoalesceToNull = 1 << 6,
-	ReplaceSemicolon = 1 << 7,
 }
 
 public static class StringUtil {
@@ -54,10 +53,6 @@ public static class StringUtil {
 
 			if (normalizations.HasFlag(StringNormalizations.TreatZeroAsBlank) && s.Equals("0")) {
 				s = string.Empty;
-			}
-		
-			if (normalizations.HasFlag(StringNormalizations.ReplaceSemicolon)) {
-				s = s.Replace(SemicolonReplacement, ";");
 			}
 		}
 

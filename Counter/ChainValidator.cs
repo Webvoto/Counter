@@ -103,7 +103,7 @@ public class ChainValidator {
 				normalize(record.RemoteIP),
 				normalize(record.RemotePort),
 				normalize(record.AzureRef),
-				StringUtil.Normalize(record.UserAgentString, StringUtil.CsvStringNormalizationsNullable | StringNormalizations.ReplaceSemicolon),
+				normalize(record.UserAgentString),
 				normalize(record.IdentifierKindCode),
 				normalize(record.Identifier),
 				normalize(record.DelegateVoterId)?.ToLower(),
