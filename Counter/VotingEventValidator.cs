@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -90,7 +90,7 @@ Recommendation:
 					return v;
 				});
 
-				await validator.EnqueueAsync(record);
+				await validator.EnqueueAsync(normalizeRecord(record));
 			}
 
 			foreach (var validator in validators.Values) {
@@ -114,13 +114,67 @@ Recommendation:
 # Voting event integrity check results
 ------------------------------------------------------------
 Checked : {stats.Checked:N0}
+Valid sequences  : {stats.Sequence:N0}
 Passed  : {stats.Passed:N0}
 Failed  : {stats.Failed:N0}
 Undefined  : {stats.Undefined:N0}
 ------------------------------------------------------------
 			");
 		}
+
+		static VotingEventCsvRecord normalizeRecord(VotingEventCsvRecord r) {
+			return new VotingEventCsvRecord {
+				ServerInstanceId = r.ServerInstanceId,
+
+				Id = normalizeGuid(r.Id),
+				DateUtc = r.DateUtc,
+				TypeCode = Normalize(r.TypeCode),
+				SubscriptionId = normalizeGuid(r.SubscriptionId),
+				SessionId = normalizeGuid(r.SessionId),
+				QuestionId = normalizeGuid(r.QuestionId),
+				VoterId = normalizeGuid(r.VoterId),
+				MemberId = normalizeGuid(r.MemberId),
+				AgentId = normalizeGuid(r.AgentId),
+				VotingChannelCode = Normalize(r.VotingChannelCode),
+				RemoteIP = Normalize(r.RemoteIP),
+				RemotePort = Normalize(r.RemotePort),
+				AzureRef = Normalize(r.AzureRef),
+				UserAgentString = Normalize(r.UserAgentString),
+				IdentifierKindCode = Normalize(r.IdentifierKindCode),
+				Identifier = Normalize(r.Identifier),
+				DelegateVoterId = normalizeGuid(r.DelegateVoterId),
+				VoterOtpId = normalizeGuid(r.VoterOtpId),
+				BioSessionId = normalizeGuid(r.BioSessionId),
+				BioAuthenticationFailureCode = Normalize(r.BioAuthenticationFailureCode),
+				BioEnrollmentFailureCode = Normalize(r.BioEnrollmentFailureCode),
+				CertificateTypeCode = Normalize(r.CertificateTypeCode),
+				CloudCertificateAuthenticationFailureCode = Normalize(r.CloudCertificateAuthenticationFailureCode),
+				AuthServerAuthenticationFailureCode = Normalize(r.AuthServerAuthenticationFailureCode),
+				WebPkiAuthenticationFailureCode = Normalize(r.WebPkiAuthenticationFailureCode),
+				OtpCheckFailureCode = Normalize(r.OtpCheckFailureCode),
+				CertificateId = normalizeGuid(r.CertificateId),
+				ValidationResultsBlobId = normalizeGuid(r.ValidationResultsBlobId),
+				VoterContactId = normalizeGuid(r.VoterContactId),
+				SubmitVoteFailureCode = Normalize(r.SubmitVoteFailureCode),
+				CausedVoterLock = Normalize(r.CausedVoterLock, StringNormalizations.TreatNullWordsAsBlank | StringNormalizations.CoalesceToEmptyString),
+
+				ServerSignature = r.ServerSignature,
+				LogNumber = Normalize(r.LogNumber),
+				Sequence = Normalize(r.Sequence),
+				WorkerId = normalizeGuid(r.WorkerId),
+				VoteBoxId = normalizeGuid(r.VoteBoxId),
+				Details = Normalize(r.Details),
+
+				ChainedLogId = normalizeGuid(r.ChainedLogId),
+				PasswordCheckFailureCode = Normalize(r.PasswordCheckFailureCode),
+				PasswordId = normalizeGuid(r.PasswordId),
+				CampaignNotificationId = normalizeGuid(r.CampaignNotificationId),
+
+				VoterAddressId = normalizeGuid(r.VoterAddressId),
+			};
+		}
+
+		static string normalizeGuid(string v) => Normalize(v)?.ToLower();
+
 	}
-
-
 }
