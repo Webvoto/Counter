@@ -1,67 +1,54 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using static Counter.Util;
 
-namespace Counter {
-	public class VotingEventValidator {
-		public class CheckStats {
+namespace Counter;
 
-			public int Checked => passed + failed;
+public class VotingEventValidationResults {
 
-			private int passed;
-			public int Passed => passed;
+	public int Checked => passed + failed + indefinite;
 
-			private int failed;
-			public int Failed => failed;
+	private int passed;
+	public int Passed => passed;
 
-			private int undefined;
-			public int Undefined => undefined;
+	private int failed;
+	public int Failed => failed;
 
-			private int sequence;
-			public int Sequence => sequence;
+	private int indefinite;
+	public int Indefinite => indefinite;
 
-			public int AddPassed() => Interlocked.Increment(ref passed);
+	public int AddPassed() => Interlocked.Increment(ref passed);
 
-			public int AddFailed() => Interlocked.Increment(ref failed);
+	public int AddFailed() => Interlocked.Increment(ref failed);
 
-			public int AddUndefined() => Interlocked.Increment(ref undefined);
+	public int AddIndefinite() => Interlocked.Increment(ref indefinite);
 
-			public int AddSequence() => Interlocked.Increment(ref sequence);
-
-			public int AddResult(bool? result, bool sequence) {
-				if (sequence) {
-					AddSequence();
-				}
-
-				if (result.HasValue) {
-					if (result.Value) {
-						return AddPassed();
-					} else {
-						return AddFailed();
-					}
-				} else {
-					return AddUndefined();
-				}
-			}
+	public int AddResult(bool? result) {
+		if (!result.HasValue) {
+			return AddIndefinite();
+		} else if (result.Value) {
+			return AddPassed();
+		} else {
+			return AddFailed();
 		}
+	}
+}
 
-		private readonly ServerProvider serverProvider;
+public partial class VotingEventValidator(
 
-		public VotingEventValidator(ServerProvider serverProvider) {
-			this.serverProvider = serverProvider;
-		}
+	ServerProvider serverProvider
 
-		public async Task ValidateAsync(FileInfo file, int degreeOfParallelism) {
-			var stats = new CheckStats();
+) {
+	public async Task ValidateAsync(FileInfo file, int degreeOfParallelism) {
 
-			var validators = new ConcurrentDictionary<string, LogValidator>();
+		var vr = new VotingEventValidationResults();
 
-			Console.WriteLine(@"
+		var validators = new ConcurrentDictionary<string, LogValidator>();
+
+		Console.WriteLine(@"
 [INFO] Voting Event Validation
 
 This process assumes that the input CSV file is ORDERED by:
@@ -78,103 +65,120 @@ Recommendation:
   ORDER BY ServerInstanceId, ChainedLogId, LogNumber, Sequence
 			");
 
-			using var reader = VotingEventsCsvReader.Open(file);
+		using var reader = VotingEventsCsvReader.Open(file);
 
-			foreach (var record in reader.GetRecords()) {
-				var key = getKey(record);
+		foreach (var record in reader.GetRecords()) {
 
-				var validator = validators.GetOrAdd(key, _ => {
-					var server = serverProvider.GetRequiredServer(record.ServerInstanceId);
-					var v = new LogValidator(server, stats);
-					v.Start();
-					return v;
-				});
+			var ev = parseRecord(record);
 
-				await validator.EnqueueAsync(normalizeRecord(record));
-			}
+			var key = getValidatorKey(ev, out var isChained);
 
-			foreach (var validator in validators.Values) {
-				validator.Complete();
-			}
+			var validator = validators.GetOrAdd(key, _ => {
+				var server = serverProvider.GetRequiredServer(record.ServerInstanceId);
+				var v = new LogValidator(server, vr, isChained);
+				v.Start();
+				return v;
+			});
 
-			await Task.WhenAll(validators.Values.Select(v => v.Completion));
-
-			logResults(stats);
-
-			Console.WriteLine(" DONE");
+			await validator.EnqueueAsync(ev);
 		}
 
-		private static string getKey(VotingEventCsvRecord e)
-			=> $"{e.ServerInstanceId}|{e.ChainedLogId}|{e.LogNumber}";
+		foreach (var validator in validators.Values) {
+			validator.Complete();
+		}
 
-		private void logResults(CheckStats stats) {
+		await Task.WhenAll(validators.Values.Select(v => v.Completion));
 
-			Console.WriteLine($@"
+		logResults(vr);
+
+		Console.WriteLine(" DONE");
+	}
+
+	private static string getValidatorKey(VotingEvent e, out bool isChained) {
+		if (e.ChainedLogId.HasValue) {
+			isChained = true;
+			return $"{e.ServerInstanceId}:{e.ChainedLogId}:{e.LogNumber}";
+		} else {
+			isChained = false;
+			return $"{e.ServerInstanceId}";
+		}
+	}
+
+	private void logResults(VotingEventValidationResults vr) {
+
+		Console.WriteLine($@"
 ------------------------------------------------------------
 # Voting event integrity check results
 ------------------------------------------------------------
-Checked : {stats.Checked:N0}
-Valid sequences  : {stats.Sequence:N0}
-Passed  : {stats.Passed:N0}
-Failed  : {stats.Failed:N0}
-Undefined  : {stats.Undefined:N0}
+Checked : {vr.Checked:N0}
+Passed  : {vr.Passed:N0}
+Failed  : {vr.Failed:N0}
+Undefined  : {vr.Indefinite:N0}
 ------------------------------------------------------------
 			");
-		}
-
-		static VotingEventCsvRecord normalizeRecord(VotingEventCsvRecord r) {
-			return new VotingEventCsvRecord {
-				ServerInstanceId = r.ServerInstanceId,
-
-				Id = normalizeGuid(r.Id),
-				DateUtc = r.DateUtc,
-				TypeCode = Normalize(r.TypeCode),
-				SubscriptionId = normalizeGuid(r.SubscriptionId),
-				SessionId = normalizeGuid(r.SessionId),
-				QuestionId = normalizeGuid(r.QuestionId),
-				VoterId = normalizeGuid(r.VoterId),
-				MemberId = normalizeGuid(r.MemberId),
-				AgentId = normalizeGuid(r.AgentId),
-				VotingChannelCode = Normalize(r.VotingChannelCode),
-				RemoteIP = Normalize(r.RemoteIP),
-				RemotePort = Normalize(r.RemotePort),
-				AzureRef = Normalize(r.AzureRef),
-				UserAgentString = Normalize(r.UserAgentString),
-				IdentifierKindCode = Normalize(r.IdentifierKindCode),
-				Identifier = Normalize(r.Identifier),
-				DelegateVoterId = normalizeGuid(r.DelegateVoterId),
-				VoterOtpId = normalizeGuid(r.VoterOtpId),
-				BioSessionId = normalizeGuid(r.BioSessionId),
-				BioAuthenticationFailureCode = Normalize(r.BioAuthenticationFailureCode),
-				BioEnrollmentFailureCode = Normalize(r.BioEnrollmentFailureCode),
-				CertificateTypeCode = Normalize(r.CertificateTypeCode),
-				CloudCertificateAuthenticationFailureCode = Normalize(r.CloudCertificateAuthenticationFailureCode),
-				AuthServerAuthenticationFailureCode = Normalize(r.AuthServerAuthenticationFailureCode),
-				WebPkiAuthenticationFailureCode = Normalize(r.WebPkiAuthenticationFailureCode),
-				OtpCheckFailureCode = Normalize(r.OtpCheckFailureCode),
-				CertificateId = normalizeGuid(r.CertificateId),
-				ValidationResultsBlobId = normalizeGuid(r.ValidationResultsBlobId),
-				VoterContactId = normalizeGuid(r.VoterContactId),
-				SubmitVoteFailureCode = Normalize(r.SubmitVoteFailureCode),
-				CausedVoterLock = Normalize(r.CausedVoterLock, StringNormalizations.TreatNullWordsAsBlank | StringNormalizations.CoalesceToEmptyString),
-
-				ServerSignature = r.ServerSignature,
-				LogNumber = Normalize(r.LogNumber),
-				Sequence = Normalize(r.Sequence),
-				WorkerId = normalizeGuid(r.WorkerId),
-				VoteBoxId = normalizeGuid(r.VoteBoxId),
-				Details = Normalize(r.Details),
-
-				ChainedLogId = normalizeGuid(r.ChainedLogId),
-				PasswordCheckFailureCode = Normalize(r.PasswordCheckFailureCode),
-				PasswordId = normalizeGuid(r.PasswordId),
-				CampaignNotificationId = normalizeGuid(r.CampaignNotificationId),
-
-				VoterAddressId = normalizeGuid(r.VoterAddressId),
-			};
-		}
-
-		static string normalizeGuid(string v) => Normalize(v)?.ToLower();
-
 	}
+
+	static VotingEvent parseRecord(VotingEventCsvRecord r) => new() {
+		Id = parseGuid(r.Id),
+		DateUtc = r.DateUtc,
+		TypeCode = parseString(r.TypeCode),
+		ServerInstanceId = r.ServerInstanceId,
+		ChainedLogId = parseNullableGuid(r.ChainedLogId),
+		LogNumber = parseNullableInt(r.LogNumber),
+		Sequence = parseNullableInt(r.Sequence),
+		SubscriptionId = parseNullableGuid(r.SubscriptionId),
+		SessionId = parseNullableGuid(r.SessionId),
+		QuestionId = parseNullableGuid(r.QuestionId),
+		VoterId = parseNullableGuid(r.VoterId),
+		MemberId = parseNullableGuid(r.MemberId),
+		AgentId = parseNullableGuid(r.AgentId),
+		WorkerId = parseNullableGuid(r.WorkerId),
+		VoteBoxId = parseNullableGuid(r.VoteBoxId),
+		VotingChannelCode = parseString(r.VotingChannelCode),
+		RemoteIP = parseString(r.RemoteIP),
+		RemotePort = parseNullableInt(r.RemotePort),
+		AzureRef = parseString(r.AzureRef),
+		UserAgentString = parseString(r.UserAgentString),
+		IdentifierKindCode = parseString(r.IdentifierKindCode),
+		Identifier = parseString(r.Identifier),
+		DelegateVoterId = parseNullableGuid(r.DelegateVoterId),
+		VoterOtpId = parseNullableGuid(r.VoterOtpId),
+		BioSessionId = parseNullableGuid(r.BioSessionId),
+		BioAuthenticationFailureCode = parseString(r.BioAuthenticationFailureCode),
+		BioEnrollmentFailureCode = parseString(r.BioEnrollmentFailureCode),
+		CertificateTypeCode = parseString(r.CertificateTypeCode),
+		CloudCertificateAuthenticationFailureCode = parseString(r.CloudCertificateAuthenticationFailureCode),
+		AuthServerAuthenticationFailureCode = parseString(r.AuthServerAuthenticationFailureCode),
+		WebPkiAuthenticationFailureCode = parseString(r.WebPkiAuthenticationFailureCode),
+		OtpCheckFailureCode = parseString(r.OtpCheckFailureCode),
+		CertificateId = parseNullableGuid(r.CertificateId),
+		ValidationResultsBlobId = parseNullableGuid(r.ValidationResultsBlobId),
+		VoterContactId = parseNullableGuid(r.VoterContactId),
+		SubmitVoteFailureCode = parseString(r.SubmitVoteFailureCode),
+		CausedVoterLock = parseNullableBool(r.CausedVoterLock),
+		Details = parseString(r.Details),
+		ServerSignature = parseBinary(r.ServerSignature),
+		PasswordCheckFailureCode = parseString(r.PasswordCheckFailureCode),
+		PasswordId = parseNullableGuid(r.PasswordId),
+		CampaignNotificationId = parseNullableGuid(r.CampaignNotificationId),
+		VoterAddressId = parseNullableGuid(r.VoterAddressId),
+	};
+
+	private static Guid parseGuid(string s) => Guid.Parse(s);
+
+	private static Guid? parseNullableGuid(string s) => isNull(s) ? null : Guid.Parse(s);
+
+	private static string parseString(string s) => isNull(s) ? null : s;
+
+	private static byte[] parseBinary(string s) => isNull(s) ? null : Util.DecodeHex(s);
+
+	private static int? parseNullableInt(string s) => isNull(s) ? null : int.Parse(s);
+
+	private static bool? parseNullableBool(string s) => isNull(s) ? null : s switch {
+		"0" => false,
+		"1" => true,
+		_ => throw new FormatException($"Bad bit value: \"s\"")
+	};
+
+	private static bool isNull(string s) => s == "NULL";
 }

@@ -112,7 +112,7 @@ namespace Counter {
 		public static VotingEventsCsvReader Open(FileInfo file) {
 			var stream = file.OpenRead();
 			var streamReader = new StreamReader(stream);
-			var useInvariantCulture = bool.TryParse(Environment.GetEnvironmentVariable("USE_INVARIANT_CULTURE_FOR_VOTING_EVENTS_CSV"), out var b) && b;
+			var useInvariantCulture = bool.TryParse(Environment.GetEnvironmentVariable("COUNTER_USE_INVARIANT_CULTURE_FOR_VOTING_EVENTS_CSV"), out var b) && b;
 			var csvReader = new CsvReader(streamReader, useInvariantCulture ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
 			return new VotingEventsCsvReader(stream, streamReader, csvReader);
 		}

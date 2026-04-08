@@ -12,7 +12,7 @@ namespace Counter {
 
 	public class VoteCounter {
 
-		private record Vote(int PoolId, int SlotNumber, byte[] EncodedValue, byte[] CmsSignature, byte[] ServerSignature, int ServerInstanceId, VoteValue Value);
+		private record Vote(int PoolId, int SlotNumber, byte[] EncodedValue, byte[] CmsSignature, byte[] ServerSignature, int ServerInstanceId, VoteValue Value, string VoteEncryptionPublicKeyThumbprint);
 
 		private class VoteBatch {
 
@@ -32,6 +32,7 @@ namespace Counter {
 
 		private readonly ServerProvider serverProvider;
 		private RSA decryptionKey;
+		private string decryptionKeyPublicKeyThumbprint;
 		private WebVaultKeyParameters decryptionKeyParams;
 		private WebVaultClient webVaultClient;
 		private X509Certificate2 signatureCertificate;
@@ -45,7 +46,7 @@ namespace Counter {
 			Console.WriteLine("Initializing ...");
 			signatureCertificate = X509CertificateLoader.LoadCertificateFromFile(signatureCertificateFile.FullName);
 			signatureCertificatePublicKey = signatureCertificate.GetRSAPublicKey();
-			if (decryptionKeyFile != null) {
+			if (decryptionKeyFile.Exists) {
 				if (decryptionKeyFile.Extension.Equals(".pem", StringComparison.InvariantCultureIgnoreCase)) {
 					initializeLocalDecryptionKey(decryptionKeyFile);
 				} else if (decryptionKeyFile.Extension.Equals(".json", StringComparison.InvariantCultureIgnoreCase)) {
@@ -65,6 +66,7 @@ namespace Counter {
 			
 			decryptionKey = RSA.Create();
 			decryptionKey.ImportEncryptedPkcs8PrivateKey(Encoding.UTF8.GetBytes(password), decryptionKeyPkcs8Bytes, out _);
+			decryptionKeyPublicKeyThumbprint = Convert.ToHexStringLower(SHA256.HashData(decryptionKey.ExportSubjectPublicKeyInfo()));
 		}
 
 		private void initializeRemoteDecryptionKey(FileInfo decryptionKeyFile) {
@@ -180,10 +182,17 @@ namespace Counter {
 			var cmsSignature = Util.DecodeHex(csvEntry.CmsSignature);
 			var serverSignature = Util.DecodeHex(csvEntry.ServerSignature);
 			var value = VoteEncoding.Decode(encodedValue);
-			return new Vote(poolId, slot, encodedValue, cmsSignature, serverSignature, csvEntry.ServerInstanceId, value);
+			var voteEncryptionPublicKeyThumbprint = Convert.ToHexStringLower(Util.DecodeHex(csvEntry.VoteEncryptionPublicKeyThumbprint));
+			return new Vote(poolId, slot, encodedValue, cmsSignature, serverSignature, csvEntry.ServerInstanceId, value, voteEncryptionPublicKeyThumbprint);
 		}
 
 		private async Task<DecryptionTable> decryptContentEncryptionKeysAsync(List<Vote> votes) {
+			if (decryptionKey != null) {
+				var voteEncryptedWithWrongKey = votes.FirstOrDefault(v => v.VoteEncryptionPublicKeyThumbprint != decryptionKeyPublicKeyThumbprint);
+				if (voteEncryptedWithWrongKey != null) {
+					throw new Exception($"Vote {voteEncryptedWithWrongKey.PoolId}:{voteEncryptedWithWrongKey.SlotNumber} is encrypted with wrong key (expected: {decryptionKeyPublicKeyThumbprint}, actual: {voteEncryptedWithWrongKey.VoteEncryptionPublicKeyThumbprint})");
+				}
+			}
 			var ciphers = votes.Select(v => getEncryptedCek(v.Value.EncryptedChoices));
 			var plaintexts = decryptionKey != null
 				? ciphers.Select(c => decryptionKey.Decrypt(c, RSAEncryptionPadding.OaepSHA256))

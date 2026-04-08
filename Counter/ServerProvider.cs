@@ -3,18 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 
-namespace Counter; 
+namespace Counter;
+
+public class Server {
+
+	public int Id { get; set; }
+
+	public int VotingEventSignatureVersion { get; set; }
+
+	public ECDsa PublicKey { get; set; }
+}
 
 public class ServerProvider {
-
-	public class Server {
-
-		public int Id { get; set; }
-
-		public int VotingEventSignatureVersion { get; set; }
-
-		public ECDsa PublicKey { get; set; }
-	}
 
 	private readonly Dictionary<int, Server> servers = new();
 
