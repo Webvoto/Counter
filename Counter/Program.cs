@@ -1,13 +1,13 @@
-﻿using Counter;
+using Counter;
 using System;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-const string SigCertBaseName = "sigCert";
+const string SigCertBaseName = "signature-certificate";
 const string ServersCsvFile = "servers.csv";
 const string VotesCsvFile = "votes.csv";
-const string DecKeyFile = "decKey.key";
+const string DecryptionKeyFile = "decryption-key.pem";
 const string PartiesCsvFile = "parties.csv";
 const string VotingEventsCsvFile = "votingEvents.csv";
 const string DistrictsCsvFile = "districts.csv";
@@ -31,11 +31,11 @@ async static Task runAsync(string[] args) {
 	}
 	var serversCsvPath = Path.Combine(baseDir, ServersCsvFile);
 	var votesCsvPath = Path.Combine(baseDir, VotesCsvFile);
-	var decKeyPath = Path.Combine(baseDir, DecKeyFile);
+	var decKeyPath = Path.Combine(baseDir, DecryptionKeyFile);
 	var partiesCsvPath = Path.Combine(baseDir, PartiesCsvFile);
 	var votingEventsCsvPath = Path.Combine(baseDir, VotingEventsCsvFile);
 	var districtsCsvPath = Path.Combine(baseDir, DistrictsCsvFile);
-	
+
 	if (!File.Exists(sigCertPath) || !File.Exists(votesCsvPath)) {
 		Console.WriteLine("Erro: Arquivos necessários não encontrados.");
 		Console.WriteLine($"Diretório atual de busca: {baseDir}");
@@ -48,10 +48,9 @@ async static Task runAsync(string[] args) {
 	var signatureCertificateFile = checkPath(sigCertPath);
 	var serversCsvFile = checkPath(serversCsvPath);
 	var votesCsvFile = checkPath(votesCsvPath);
-	var decryptionKeyFile = !string.IsNullOrEmpty(decKeyPath) ? checkPath(decKeyPath) : null;
-	var partiesCsvFile = !string.IsNullOrEmpty(partiesCsvPath) ? checkPath(partiesCsvPath) : null;
-	var districtsCsvFile = !string.IsNullOrEmpty(districtsCsvPath) ? checkPath(districtsCsvPath) : null;
-	var votingEventsCsvFile = !string.IsNullOrEmpty(votingEventsCsvPath) ? checkPath(votingEventsCsvPath) : null;
+	var decryptionKeyFile = tryGetFile(decKeyPath, out FileInfo keyFile) ? keyFile : null;
+	var partiesCsvFile = tryGetFile(partiesCsvPath, out FileInfo partiesFile) ? partiesFile : null;
+	var districtsCsvFile = tryGetFile(districtsCsvPath, out FileInfo districtsFile) ? districtsFile : null;
 
 	// Parties and districts are only needed later, but we'll read them ahead of time to raise exceptions sooner rather than later
 	var parties = partiesCsvFile != null ? PartiesCsvReader.Read(partiesCsvFile) : null;
@@ -63,7 +62,7 @@ async static Task runAsync(string[] args) {
 
 	var serverProvider = new ServerProvider();
 	serverProvider.Initialize(serversCsvFile);
-	
+
 	Console.WriteLine();
 	var counter = new VoteCounter(serverProvider);
 	counter.Initialize(signatureCertificateFile, decryptionKeyFile);
@@ -99,7 +98,7 @@ async static Task runAsync(string[] args) {
 		Console.WriteLine($"Signed results written to '{cmsPath}'");
 	}
 
-	if (!File.Exists(votingEventsCsvPath)) {
+	if (!tryGetFile(votingEventsCsvPath, out FileInfo votingEventsCsvFile)) {
 		return;
 	}
 
@@ -111,9 +110,14 @@ async static Task runAsync(string[] args) {
 }
 
 static FileInfo checkPath(string path) {
-	var file = new FileInfo(path);
-	if (!file.Exists) {
+	if (!tryGetFile(path, out FileInfo file)) {
 		throw new Exception($"File not found: '{file.FullName}'");
 	}
 	return file;
+}
+
+static bool tryGetFile(string path, out FileInfo file) {
+	file = new FileInfo(path);
+
+	return file.Exists;
 }

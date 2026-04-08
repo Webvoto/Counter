@@ -1,10 +1,11 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using static Counter.Util;
 
 namespace Counter {
 	public class VotingEventValidator {
@@ -21,13 +22,22 @@ namespace Counter {
 			private int undefined;
 			public int Undefined => undefined;
 
+			private int sequence;
+			public int Sequence => sequence;
+
 			public int AddPassed() => Interlocked.Increment(ref passed);
 
 			public int AddFailed() => Interlocked.Increment(ref failed);
 
 			public int AddUndefined() => Interlocked.Increment(ref undefined);
 
-			public int AddResult(bool? result) {
+			public int AddSequence() => Interlocked.Increment(ref sequence);
+
+			public int AddResult(bool? result, bool sequence) {
+				if (sequence) {
+					AddSequence();
+				}
+
 				if (result.HasValue) {
 					if (result.Value) {
 						return AddPassed();
