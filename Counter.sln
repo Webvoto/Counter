@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.31313.79
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36310.24 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Counter", "Counter\Counter.csproj", "{8C6F87AB-FB68-44E6-8D5A-3B1319780C12}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Webvoto.VotingSystem.Auditing", "Auditing\Webvoto.VotingSystem.Auditing.csproj", "{996276D2-E648-45F6-8129-34D9E7828CE4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{8C6F87AB-FB68-44E6-8D5A-3B1319780C12}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C6F87AB-FB68-44E6-8D5A-3B1319780C12}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C6F87AB-FB68-44E6-8D5A-3B1319780C12}.Release|Any CPU.Build.0 = Release|Any CPU
+		{996276D2-E648-45F6-8129-34D9E7828CE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{996276D2-E648-45F6-8129-34D9E7828CE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{996276D2-E648-45F6-8129-34D9E7828CE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{996276D2-E648-45F6-8129-34D9E7828CE4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

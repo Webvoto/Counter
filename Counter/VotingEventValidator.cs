@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Webvoto.VotingSystem.Auditing;
 
 namespace Counter;
 
@@ -94,7 +95,7 @@ Recommendation:
 		Console.WriteLine(" DONE");
 	}
 
-	private static string getValidatorKey(VotingEvent e, out bool isChained) {
+	private static string getValidatorKey(VotingEventRecord e, out bool isChained) {
 		if (e.ChainedLogId.HasValue) {
 			isChained = true;
 			return $"{e.ServerInstanceId}:{e.ChainedLogId}:{e.LogNumber}";
@@ -118,7 +119,7 @@ Undefined  : {vr.Indefinite:N0}
 			");
 	}
 
-	static VotingEvent parseRecord(VotingEventCsvRecord r) => new() {
+	static VotingEventRecord parseRecord(VotingEventCsvRecord r) => new() {
 		Id = parseGuid(r.Id),
 		DateUtc = r.DateUtc,
 		TypeCode = parseString(r.TypeCode),
