@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using static Counter.ServerProvider;
+using static Counter.Util;
 using static Counter.VotingEventValidator;
 
 namespace Counter;
@@ -55,11 +56,11 @@ public class LogValidator {
 	private bool? verify(VotingEventCsvRecord current, VotingEventCsvRecord previous) {
 		byte[] lastEventSignature = null;
 
-		if (previous?.ServerSignature != null) {
+		if (!string.IsNullOrEmpty(previous?.ServerSignature)) {
 			lastEventSignature = parseSignature(previous.ServerSignature);
 		}
 
-		if (current.ServerSignature == null) {
+		if (string.IsNullOrEmpty(current.ServerSignature)) {
 			return null;
 		}
 
@@ -77,65 +78,65 @@ public class LogValidator {
 		/*
 		 * DO NOT CHANGE EXISTING VERSIONS!
 		 * 
-		 * When a new field is added to VotingEvent, create a new version with a new field list containing the new field and update Constants.VotingEventSignatureVersion accordingly
+		 * When a new field is added to VotingEvent, create a new version with a new field list containing the new field.
 		 */
 
 		1 => [
-			normalize(record.Id)?.ToLower(),
-				normalize(record.DateUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'")),
-				normalize(record.TypeCode),
-				normalize(record.SubscriptionId)?.ToLower(),
-				normalize(record.SessionId)?.ToLower(),
-				normalize(record.QuestionId)?.ToLower(),
-				normalize(record.VoterId)?.ToLower(),
-				normalize(record.MemberId)?.ToLower(),
-				normalize(record.AgentId)?.ToLower(),
-				normalize(record.VotingChannelCode),
-				normalize(record.RemoteIP),
-				normalize(record.RemotePort),
-				normalize(record.AzureRef),
-				normalize(record.UserAgentString),
-				normalize(record.IdentifierKindCode),
-				normalize(record.Identifier),
-				normalize(record.DelegateVoterId)?.ToLower(),
-				normalize(record.VoterOtpId)?.ToLower(),
-				normalize(record.BioSessionId)?.ToLower(),
-				normalize(record.BioAuthenticationFailureCode),
-				normalize(record.BioEnrollmentFailureCode),
-				normalize(record.CertificateTypeCode),
-				normalize(record.CloudCertificateAuthenticationFailureCode),
-				normalize(record.AuthServerAuthenticationFailureCode),
-				normalize(record.WebPkiAuthenticationFailureCode),
-				normalize(record.OtpCheckFailureCode),
-				normalize(record.CertificateId)?.ToLower(),
-				normalize(record.ValidationResultsBlobId)?.ToLower(),
-				normalize(record.VoterContactId)?.ToLower(),
-				normalize(record.SubmitVoteFailureCode),
-				StringUtil.Normalize(record.CausedVoterLock, StringUtil.CsvStringNormalizationsRequired),
+			Normalize(record.Id)?.ToLower(),
+			Normalize(record.DateUtc.ToString("yyyy-MM-dd HH:mm:ss'Z'")),
+			Normalize(record.TypeCode),
+			Normalize(record.SubscriptionId)?.ToLower(),
+			Normalize(record.SessionId)?.ToLower(),
+			Normalize(record.QuestionId)?.ToLower(),
+			Normalize(record.VoterId)?.ToLower(),
+			Normalize(record.MemberId)?.ToLower(),
+			Normalize(record.AgentId)?.ToLower(),
+			Normalize(record.VotingChannelCode),
+			Normalize(record.RemoteIP),
+			Normalize(record.RemotePort),
+			Normalize(record.AzureRef),
+			Normalize(record.UserAgentString),
+			Normalize(record.IdentifierKindCode),
+			Normalize(record.Identifier),
+			Normalize(record.DelegateVoterId)?.ToLower(),
+			Normalize(record.VoterOtpId)?.ToLower(),
+			Normalize(record.BioSessionId)?.ToLower(),
+			Normalize(record.BioAuthenticationFailureCode),
+			Normalize(record.BioEnrollmentFailureCode),
+			Normalize(record.CertificateTypeCode),
+			Normalize(record.CloudCertificateAuthenticationFailureCode),
+			Normalize(record.AuthServerAuthenticationFailureCode),
+			Normalize(record.WebPkiAuthenticationFailureCode),
+			Normalize(record.OtpCheckFailureCode),
+			Normalize(record.CertificateId)?.ToLower(),
+			Normalize(record.ValidationResultsBlobId)?.ToLower(),
+			Normalize(record.VoterContactId)?.ToLower(),
+			Normalize(record.SubmitVoteFailureCode),
+			Normalize(record.CausedVoterLock, StringNormalizations.TreatNullWordsAsBlank | StringNormalizations.CoalesceToEmptyString),
 			],
 
 		2 => [
-			normalize(record.LogNumber),
-				normalize(record.Sequence),
-				lastEventSignature != null ? Convert.ToBase64String(lastEventSignature) : null,
-				.. getSignedFields(record, 1),
-				normalize(record.WorkerId)?.ToLower(),
-				normalize(record.VoteBoxId)?.ToLower(),
-				normalize(record.Details),
-			],
+			Normalize(record.LogNumber),
+			Normalize(record.Sequence),
+			lastEventSignature != null ? Convert.ToBase64String(lastEventSignature) : null,
+			.. getSignedFields(record, 1),
+			Normalize(record.WorkerId)?.ToLower(),
+			Normalize(record.VoteBoxId)?.ToLower(),
+			Normalize(record.Details),
+		],
 
 		3 => [
-			normalize(record.ChainedLogId)?.ToLower(),
-				.. getSignedFields(record, 2),
-				normalize(record.PasswordCheckFailureCode),
-				normalize(record.PasswordId)?.ToLower(),
-				normalize(record.CampaignNotificationId)?.ToLower(),
+			Normalize(record.ChainedLogId)?.ToLower(),
+			.. getSignedFields(record, 2),
+			Normalize(record.PasswordCheckFailureCode),
+			Normalize(record.PasswordId)?.ToLower(),
+			Normalize(record.CampaignNotificationId)?.ToLower(),
 			],
 
 		4 => [
 			.. getSignedFields(record, 3),
-				normalize(record.VoterAddressId)?.ToLower(),
-			],
+			Normalize(record.VoterAddressId)?.ToLower(),
+		],
 
 		_ => throw new NotImplementedException()
 	};
@@ -149,10 +150,6 @@ public class LogValidator {
 	}
 
 	private static byte[] parseSignature(string signature) {
-		if (string.IsNullOrWhiteSpace(signature)) {
-			return null;
-		}
-
 		signature = removeHexPrefix(signature);
 		if (isHex(signature)) {
 			return Convert.FromHexString(signature);
@@ -163,8 +160,4 @@ public class LogValidator {
 
 	private static bool isHex(string value)
 		=> value.All(c => (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
-
-
-	private static string normalize(string value)
-		=> StringUtil.Normalize(value);
 }
