@@ -99,7 +99,7 @@ async static Task runAsync(string[] args) {
 		Console.WriteLine($"Signed results written to '{cmsPath}'");
 	}
 
-	if (votingEventsCsvFile == null) {
+	if (!File.Exists(votingEventsCsvPath)) {
 		return;
 	}
 

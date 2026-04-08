@@ -32,7 +32,7 @@ namespace Counter {
 		public static ServersCsvReader Open(FileInfo file) {
 			var stream = file.OpenRead();
 			var streamReader = new StreamReader(stream);
-			var useInvariantCulture = bool.TryParse(Environment.GetEnvironmentVariable("USE_INVARIANT_CULTURE_FOR_VOTES_CSV"), out var b) && b;
+			var useInvariantCulture = bool.TryParse(Environment.GetEnvironmentVariable("USE_INVARIANT_CULTURE_FOR_SERVERS_CSV"), out var b) && b;
 			var csvReader = new CsvReader(streamReader, useInvariantCulture ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
 			return new ServersCsvReader(stream, streamReader, csvReader);
 		}
