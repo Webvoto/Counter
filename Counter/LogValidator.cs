@@ -44,13 +44,7 @@ public class LogValidator {
 		VotingEventCsvRecord previous = null;
 
 		await foreach (var record in channel.Reader.ReadAllAsync()) {
-			bool result;
-
-			if (record.ServerSignature != null) {
-				result = verify(record, previous);
-			} else {
-				result = true;
-			}
+			var result = verify(record, previous);
 
 			stats.AddResult(result);
 
@@ -58,25 +52,22 @@ public class LogValidator {
 		}
 	}
 
-	private bool verify(VotingEventCsvRecord current, VotingEventCsvRecord previous) {
-		byte[] lastSignature = null;
+	private bool? verify(VotingEventCsvRecord current, VotingEventCsvRecord previous) {
+		byte[] lastEventSignature = null;
 
 		if (previous?.ServerSignature != null) {
-			lastSignature = parseSignature(previous.ServerSignature);
+			lastEventSignature = parseSignature(previous.ServerSignature);
 		}
 
-		return verifySignature(current, lastSignature);
-	}
+		if (current.ServerSignature == null) {
+			return null;
+		}
 
-	private bool verifySignature(VotingEventCsvRecord record, byte[] lastEventSignature) {
-		if (record.ServerSignature == null)
-			return true;
-
-		var payload = getSignedFields(record, 4, lastEventSignature);
+		var payload = getSignedFields(current, server.VotingEventSignatureVersion, lastEventSignature);
 
 		var dataBytes = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(payload));
 
-		var signatureBytes = parseSignature(record.ServerSignature);
+		var signatureBytes = parseSignature(current.ServerSignature);
 
 		return Util.VerifyServerSignature(server.PublicKey, dataBytes, signatureBytes);
 	}

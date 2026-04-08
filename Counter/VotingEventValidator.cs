@@ -18,11 +18,26 @@ namespace Counter {
 			private int failed;
 			public int Failed => failed;
 
+			private int undefined;
+			public int Undefined => undefined;
+
 			public int AddPassed() => Interlocked.Increment(ref passed);
 
 			public int AddFailed() => Interlocked.Increment(ref failed);
 
-			public int AddResult(bool result) => result ? AddPassed() : AddFailed();
+			public int AddUndefined() => Interlocked.Increment(ref undefined);
+
+			public int AddResult(bool? result) {
+				if (result.HasValue) {
+					if (result.Value) {
+						return AddPassed();
+					} else {
+						return AddFailed();
+					}
+				} else {
+					return AddUndefined();
+				}
+			}
 		}
 
 		private readonly ServerProvider serverProvider;
@@ -91,6 +106,7 @@ Recommendation:
 Checked : {stats.Checked:N0}
 Passed  : {stats.Passed:N0}
 Failed  : {stats.Failed:N0}
+Undefined  : {stats.Undefined:N0}
 ------------------------------------------------------------
 			");
 		}
