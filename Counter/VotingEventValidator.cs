@@ -42,6 +42,9 @@ public partial class VotingEventValidator(
 ) {
 	public async Task ValidateAsync(FileInfo file, int degreeOfParallelism) {
 
+		Console.WriteLine();
+		Console.WriteLine($"Checking voting events ...");
+
 		var vr = new VotingEventValidationResults();
 
 		var validators = new ConcurrentDictionary<string, LogValidator>();
@@ -72,7 +75,7 @@ public partial class VotingEventValidator(
 
 		logResults(vr);
 
-		Console.WriteLine(" DONE");
+		Console.WriteLine("DONE");
 	}
 
 	private static string getValidatorKey(VotingEventRecord e, out bool isChained) {

@@ -57,43 +57,38 @@ async static Task runAsync(string[] args) {
 		var results = await counter.CountAsync(votesCsvFile, degreeOfParallelism);
 
 		if (results == null) {
+
 			// decryption key not given, votes only checked
 			Console.WriteLine("ALL VOTES ARE VALID");
-			return;
-		}
 
-		var resultsWriter = new ResultsCsvWriter(parties, districts);
-		byte[] resultsFileBytes;
-		using (var buffer = new MemoryStream()) {
-			resultsWriter.Write(results, buffer);
-			resultsFileBytes = buffer.ToArray();
-		}
+		} else {
 
-		var timestamp = DateTime.Now.ToString("yyyy-MM-dd-HHmmss");
+			var timestamp = DateTime.Now.ToString("yyyy-MM-dd-HHmmss");
 
-		var resultsFilePath = $"results-{timestamp}.csv";
-		File.WriteAllBytes(resultsFilePath, resultsFileBytes);
-		Console.WriteLine($"Results written to {resultsFilePath}");
+			var resultsFileName = $"results-{timestamp}.csv";
+			var resultsFile = getFileInfo(baseDir, resultsFileName);
+			using (var resultsFileStream = resultsFile.Create()) {
+				var resultsWriter = new ResultsCsvWriter(parties, districts);
+				resultsWriter.Write(results, resultsFileStream);
+			}
+			Console.WriteLine($"Results written to '{resultsFileName}'");
 
-		var signatureKeyParamsFile = new FileInfo(Path.ChangeExtension(signatureCertificateFile.FullName, ".json"));
-		if (signatureKeyParamsFile.Exists) {
-			Console.WriteLine("Signing results ...");
-			var signatureKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(signatureKeyParamsFile.FullName));
-			var webVaultClient = new WebVaultClient(signatureKeyParams.Endpoint, signatureKeyParams.ApiKey);
-			var cms = await webVaultClient.SignCadesAsync(signatureKeyParams.KeyId, resultsFileBytes, File.ReadAllBytes(signatureCertificateFile.FullName));
-			var cmsPath = $"signed-results-{timestamp}.p7s";
-			File.WriteAllBytes($"signed-results-{timestamp}.p7s", cms);
-			Console.WriteLine($"Signed results written to '{cmsPath}'");
+			var signatureKeyParamsFile = new FileInfo(Path.ChangeExtension(signatureCertificateFile.FullName, ".json"));
+			if (signatureKeyParamsFile.Exists) {
+				Console.WriteLine("Signing results ...");
+				var signatureKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(signatureKeyParamsFile.FullName));
+				var webVaultClient = new WebVaultClient(signatureKeyParams.Endpoint, signatureKeyParams.ApiKey);
+				var cms = await webVaultClient.SignCadesAsync(signatureKeyParams.KeyId, File.ReadAllBytes(resultsFile.FullName), File.ReadAllBytes(signatureCertificateFile.FullName));
+				var cmsPath = $"signed-results-{timestamp}.p7s";
+				File.WriteAllBytes($"signed-results-{timestamp}.p7s", cms);
+				Console.WriteLine($"Signed results written to '{cmsPath}'");
+			}
 		}
 	}
 
 	if (votingEventsCsvFile.Exists) {
-
-		Console.WriteLine();
-		Console.WriteLine($"Initializing voting events check...");
 		var eventValidator = new VotingEventValidator(serverProvider);
 		await eventValidator.ValidateAsync(votingEventsCsvFile, degreeOfParallelism);
-
 	}
 }
 
