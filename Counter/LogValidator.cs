@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -43,17 +43,23 @@ public class LogValidator {
 
 	private async Task processAsync() {
 		VotingEventCsvRecord previous = null;
+		var expectedSequence = 0;
 
 		await foreach (var record in channel.Reader.ReadAllAsync()) {
-			var result = verify(record, previous);
+			var isChained = !string.IsNullOrEmpty(record.ChainedLogId);
+			var expectedSequenceStr = isChained ? expectedSequence.ToString() : null;
+			var sigCheckResult = verifySignature(record, previous);
+			var sequenceCheck = verifySequence(record, expectedSequenceStr);
 
-			stats.AddResult(result);
+			stats.AddResult(sigCheckResult, sequenceCheck);
 
 			previous = record;
+
+			expectedSequence++;
 		}
 	}
 
-	private bool? verify(VotingEventCsvRecord current, VotingEventCsvRecord previous) {
+	private bool? verifySignature(VotingEventCsvRecord current, VotingEventCsvRecord previous) {
 		byte[] lastEventSignature = null;
 
 		if (!string.IsNullOrEmpty(previous?.ServerSignature)) {
@@ -72,6 +78,9 @@ public class LogValidator {
 
 		return Util.VerifyServerSignature(server.PublicKey, dataBytes, signatureBytes);
 	}
+
+	private bool verifySequence(VotingEventCsvRecord record, string expectedSequence) 
+		=> record.Sequence == expectedSequence;
 
 	private static List<string> getSignedFields(VotingEventCsvRecord record, int version, byte[] lastEventSignature = null) => version switch {
 
