@@ -1,10 +1,16 @@
 ﻿using Counter;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+
+const string SigCertBaseName = "sigCert";
+const string ServersCsvFile = "servers.csv";
+const string VotesCsvFile = "votes.csv";
+const string DecKeyFile = "decKey.key";
+const string PartiesCsvFile = "parties.csv";
+const string VotingEventsCsvFile = "votingEvents.csv";
+const string DistrictsCsvFile = "districts.csv";
 
 try {
 	await runAsync(args);
@@ -16,16 +22,26 @@ try {
 
 async static Task runAsync(string[] args) {
 
-	var sigCertPath = args.ElementAtOrDefault(0);
-	var serversCsvPath = args.ElementAtOrDefault(1);
-	var votesCsvPath = args.ElementAtOrDefault(2);
-	var decKeyPath = args.ElementAtOrDefault(3);
-	var partiesCsvPath = args.ElementAtOrDefault(4);
-	var votingEventsCsvPath = args.ElementAtOrDefault(5);
-	var districtsCsvPath = args.ElementAtOrDefault(6);
+	var baseDir = args.ElementAtOrDefault(0) ?? Directory.GetCurrentDirectory();
 
-	if (string.IsNullOrEmpty(sigCertPath) || string.IsNullOrEmpty(votesCsvPath)) {
-		Console.WriteLine("Syntax: Counter <signature certificate path> <votes CSV path> [<decryption key path>] [<parties CSV path>] [<districts CSV path>]");
+	string sigCertPath = Path.Combine(baseDir, $"{SigCertBaseName}.pem");
+
+	if (!File.Exists(sigCertPath)) {
+		sigCertPath = Path.Combine(baseDir, $"{SigCertBaseName}.cer");
+	}
+	var serversCsvPath = Path.Combine(baseDir, ServersCsvFile);
+	var votesCsvPath = Path.Combine(baseDir, VotesCsvFile);
+	var decKeyPath = Path.Combine(baseDir, DecKeyFile);
+	var partiesCsvPath = Path.Combine(baseDir, PartiesCsvFile);
+	var votingEventsCsvPath = Path.Combine(baseDir, VotingEventsCsvFile);
+	var districtsCsvPath = Path.Combine(baseDir, DistrictsCsvFile);
+	
+	if (!File.Exists(sigCertPath) || !File.Exists(votesCsvPath)) {
+		Console.WriteLine("Erro: Arquivos necessários não encontrados.");
+		Console.WriteLine($"Diretório atual de busca: {baseDir}");
+		Console.WriteLine("Certifique-se de que os arquivos abaixo estão na pasta:");
+		Console.WriteLine($"  - {SigCertBaseName}.cer OU {SigCertBaseName}.pem");
+		Console.WriteLine($"  - {VotesCsvFile}");
 		return;
 	}
 
