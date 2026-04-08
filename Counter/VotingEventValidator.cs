@@ -34,7 +34,7 @@ namespace Counter {
 		public async Task ValidateAsync(FileInfo file, int degreeOfParallelism) {
 			var stats = new CheckStats();
 
-			var validators = new ConcurrentDictionary<string, ChainValidator>();
+			var validators = new ConcurrentDictionary<string, LogValidator>();
 
 			Console.WriteLine(@"
 [INFO] Voting Event Validation
@@ -60,7 +60,7 @@ Recommendation:
 
 				var validator = validators.GetOrAdd(key, _ => {
 					var server = serverProvider.GetRequiredServer(record.ServerInstanceId);
-					var v = new ChainValidator(server, stats);
+					var v = new LogValidator(server, stats);
 					v.Start();
 					return v;
 				});

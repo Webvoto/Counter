@@ -10,7 +10,7 @@ using static Counter.VotingEventValidator;
 
 namespace Counter;
 
-public class ChainValidator {
+public class LogValidator {
 	private readonly Channel<VotingEventCsvRecord> channel;
 	private readonly CheckStats stats;
 	private readonly Server server;
@@ -19,7 +19,7 @@ public class ChainValidator {
 
 	public Task Completion => processingTask;
 
-	public ChainValidator(Server server, CheckStats stats) {
+	public LogValidator(Server server, CheckStats stats) {
 		this.stats = stats;
 		this.server = server;
 
