@@ -4,13 +4,13 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-const string SigCertBaseName = "signature-certificate";
-const string ServersCsvFile = "servers.csv";
-const string VotesCsvFile = "votes.csv";
-const string DecryptionKeyFile = "decryption-key.pem";
-const string PartiesCsvFile = "parties.csv";
-const string VotingEventsCsvFile = "events.csv";
-const string DistrictsCsvFile = "districts.csv";
+const string ServersFileName = "servers.csv";
+const string VotesFileName = "votes.csv";
+const string SignatureCertFileName = "signature-certificate.cer";
+const string DecryptionKeyFileName = "decryption-key.pem";
+const string PartiesFileName = "parties.csv";
+const string DistrictsFileName = "districts.csv";
+const string VotingEventsFileName = "events.csv";
 
 try {
 	await runAsync(args);
@@ -22,31 +22,27 @@ try {
 
 async static Task runAsync(string[] args) {
 
+	var degreeOfParallelismVar = Environment.GetEnvironmentVariable("COUNTER_THREADS");
+	var degreeOfParallelism = !string.IsNullOrEmpty(degreeOfParallelismVar) ? int.Parse(degreeOfParallelismVar) : Environment.ProcessorCount;
+	Console.WriteLine($"Degree of parallelism: {degreeOfParallelism}");
+
 	var basePath = args.ElementAtOrDefault(0) ?? Directory.GetCurrentDirectory();
 	var baseDir = new DirectoryInfo(basePath);
 	if (!baseDir.Exists) {
 		throw new Exception($"Base directory not found: {baseDir.FullName}");
 	}
 
-	var signatureCertificateFile = getFileInfo(baseDir, $"{SigCertBaseName}.pem");
-	if (!signatureCertificateFile.Exists) {
-		signatureCertificateFile = getFileInfo(baseDir, $"{SigCertBaseName}.cer");
-	}
-	var serversCsvFile = getFileInfo(baseDir, ServersCsvFile);
-	var votesCsvFile = getFileInfo(baseDir, VotesCsvFile);
-	var decryptionKeyFile = getFileInfo(baseDir, DecryptionKeyFile);
-	var partiesCsvFile = getFileInfo(baseDir, PartiesCsvFile);
-	var votingEventsCsvFile = getFileInfo(baseDir, VotingEventsCsvFile);
-	var districtsCsvFile = getFileInfo(baseDir, DistrictsCsvFile);
+	var serversCsvFile = getFileInfo(baseDir, ServersFileName);
+	var votesCsvFile = getFileInfo(baseDir, VotesFileName);
+	var signatureCertificateFile = getFileInfo(baseDir, SignatureCertFileName);
+	var decryptionKeyFile = getFileInfo(baseDir, DecryptionKeyFileName);
+	var partiesCsvFile = getFileInfo(baseDir, PartiesFileName);
+	var districtsCsvFile = getFileInfo(baseDir, DistrictsFileName);
+	var votingEventsCsvFile = getFileInfo(baseDir, VotingEventsFileName);
 
 	ensureFileExists(serversCsvFile);
 	var serverProvider = new ServerProvider();
 	serverProvider.Initialize(serversCsvFile);
-
-	var degreeOfParallelismVar = Environment.GetEnvironmentVariable("COUNTER_WORKERS");
-	var degreeOfParallelism = !string.IsNullOrEmpty(degreeOfParallelismVar) ? int.Parse(degreeOfParallelismVar) : 32;
-	Console.WriteLine($"Degree of parallelism: {degreeOfParallelism}");
-	Console.WriteLine();
 
 	if (votesCsvFile.Exists) {
 

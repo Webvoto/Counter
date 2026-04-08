@@ -1,7 +1,4 @@
-using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Security.Cryptography;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Webvoto.VotingSystem.Auditing;
@@ -17,13 +14,11 @@ public class LogValidator(
 ) {
 
 	private readonly Channel<VotingEventRecord> channel = Channel.CreateBounded<VotingEventRecord>(500);
-	private readonly bool isChained = isChained;
-	private Task processingTask;
 
-	public Task Completion => processingTask;
+	public Task ProcessingTask { get; private set; }
 
 	public void Start() {
-		processingTask = Task.Run(processAsync);
+		ProcessingTask = Task.Run(processAsync);
 	}
 
 	public async Task EnqueueAsync(VotingEventRecord record) {
@@ -52,7 +47,8 @@ public class LogValidator(
 		}
 
 		var currentEncoded = VotingEventEncoding.Encode(current, server.VotingEventSignatureVersion, previous?.ServerSignature);
-		if (!Util.VerifyServerSignature(server.PublicKey, currentEncoded, current.ServerSignature)) {
+		var serverSigOk = server.PublicKey.VerifyData(currentEncoded, current.ServerSignature, HashAlgorithmName.SHA256);
+		if (!serverSigOk) {
 			return false;
 		}
 

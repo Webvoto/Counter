@@ -43,10 +43,15 @@ namespace Counter {
 		}
 
 		public void Initialize(FileInfo signatureCertificateFile, FileInfo decryptionKeyFile) {
-			Console.WriteLine("Initializing ...");
+			
+			Console.WriteLine("Reading signature certificate ...");
 			signatureCertificate = X509CertificateLoader.LoadCertificateFromFile(signatureCertificateFile.FullName);
 			signatureCertificatePublicKey = signatureCertificate.GetRSAPublicKey();
-			if (decryptionKeyFile.Exists) {
+			
+			if (!decryptionKeyFile.Exists) {
+				Console.WriteLine("WARNING: Decryption key not found, votes will only be checked!");
+			} else {
+				Console.WriteLine("Reading decryption key ...");
 				if (decryptionKeyFile.Extension.Equals(".pem", StringComparison.InvariantCultureIgnoreCase)) {
 					initializeLocalDecryptionKey(decryptionKeyFile);
 				} else if (decryptionKeyFile.Extension.Equals(".json", StringComparison.InvariantCultureIgnoreCase)) {
@@ -61,7 +66,7 @@ namespace Counter {
 			var decryptionKeyPkcs8Pem = File.ReadAllBytes(decryptionKeyFile.FullName);
 			var decryptionKeyPkcs8Bytes = Util.DecodePem(decryptionKeyPkcs8Pem);
 			
-			Console.WriteLine("Please provide the decryption key file password:");
+			Console.Write("Please provide the decryption key file password: ");
 			var password = Console.ReadLine();
 			
 			decryptionKey = RSA.Create();
@@ -205,7 +210,7 @@ namespace Counter {
 			// Check server signature
 			var server = serverProvider.GetRequiredServer(vote.ServerInstanceId);
 
-			var serverSigOk = Util.VerifyServerSignature(server.PublicKey, vote.CmsSignature, vote.ServerSignature);
+			var serverSigOk = server.PublicKey.VerifyData(vote.CmsSignature, vote.ServerSignature, HashAlgorithmName.SHA256);
 			if (!serverSigOk) {
 				throw new Exception($"Vote on pool {vote.PoolId} slot {vote.SlotNumber} has an invalid server signature");
 			}

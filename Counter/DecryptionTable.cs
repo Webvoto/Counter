@@ -2,15 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Counter {
 
 	public class DecryptionTable {
 
 		private readonly HashAlgorithm hasher = SHA256.Create();
-		private readonly Dictionary<string, byte[]> plaintextDictionary = new Dictionary<string, byte[]>();
+		private readonly Dictionary<string, byte[]> plaintextDictionary = [];
 
 		public DecryptionTable(IEnumerable<byte[]> ciphers, IEnumerable<byte[]> plaintexts) {
 			var cipherList = ciphers?.ToList() ?? throw new ArgumentNullException(nameof(ciphers));

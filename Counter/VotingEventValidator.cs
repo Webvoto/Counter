@@ -10,22 +10,19 @@ namespace Counter;
 
 public class VotingEventValidationResults {
 
-	public int Checked => passed + failed + indefinite;
+	public int Checked => passed + indeterminate + failed;
 
 	private int passed;
-	public int Passed => passed;
-
+	private int indeterminate;
 	private int failed;
+
+	public int Passed => passed;
+	public int Indeterminate => indeterminate;
 	public int Failed => failed;
 
-	private int indefinite;
-	public int Indefinite => indefinite;
-
 	public int AddPassed() => Interlocked.Increment(ref passed);
-
+	public int AddIndefinite() => Interlocked.Increment(ref indeterminate);
 	public int AddFailed() => Interlocked.Increment(ref failed);
-
-	public int AddIndefinite() => Interlocked.Increment(ref indefinite);
 
 	public int AddResult(bool? result) {
 		if (!result.HasValue) {
@@ -49,23 +46,6 @@ public partial class VotingEventValidator(
 
 		var validators = new ConcurrentDictionary<string, LogValidator>();
 
-		Console.WriteLine(@"
-[INFO] Voting Event Validation
-
-This process assumes that the input CSV file is ORDERED by:
-
-  - ServerInstanceId
-  - ChainedLogId
-  - LogNumber
-  - Sequence
-
-If the file is not ordered, signature validation may FAIL due to broken chaining.
-
-Recommendation:
-  Ensure the data is exported using:
-  ORDER BY ServerInstanceId, ChainedLogId, LogNumber, Sequence
-			");
-
 		using var reader = VotingEventsCsvReader.Open(file);
 
 		foreach (var record in reader.GetRecords()) {
@@ -88,7 +68,7 @@ Recommendation:
 			validator.Complete();
 		}
 
-		await Task.WhenAll(validators.Values.Select(v => v.Completion));
+		await Task.WhenAll(validators.Values.Select(v => v.ProcessingTask));
 
 		logResults(vr);
 
@@ -111,12 +91,31 @@ Recommendation:
 ------------------------------------------------------------
 # Voting event integrity check results
 ------------------------------------------------------------
-Checked : {vr.Checked:N0}
-Passed  : {vr.Passed:N0}
-Failed  : {vr.Failed:N0}
-Undefined  : {vr.Indefinite:N0}
+Checked       : {vr.Checked:N0}
+Passed        : {vr.Passed:N0}
+Indeterminate : {vr.Indeterminate:N0}
+Failed        : {vr.Failed:N0}
 ------------------------------------------------------------
 			");
+
+		if (vr.Failed > 0 || vr.Indeterminate > 0) {
+			Console.WriteLine(@"
+[INFO] Voting Event Validation
+
+This process assumes that the input CSV file is ORDERED by:
+
+  - ServerInstanceId
+  - ChainedLogId
+  - LogNumber
+  - Sequence
+
+If the file is not ordered, signature validation may FAIL due to broken chaining.
+
+Recommendation:
+  Ensure the data is exported using:
+  ORDER BY ServerInstanceId, ChainedLogId, LogNumber, Sequence
+			");
+		}
 	}
 
 	static VotingEventRecord parseRecord(VotingEventCsvRecord r) => new() {

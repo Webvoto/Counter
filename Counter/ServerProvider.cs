@@ -19,16 +19,18 @@ public class ServerProvider {
 	private readonly Dictionary<int, Server> servers = new();
 
 	public void Initialize(FileInfo serversCsvFile) {
-		Console.Write("Reading servers ...");
-		using (var serverCsvReader = ServersCsvReader.Open(serversCsvFile)) {
-			foreach (var serverRecord in serverCsvReader.GetRecords()) {
-				if (!servers.ContainsKey(serverRecord.Id)) {
-					servers[serverRecord.Id] = new Server() {
-						Id = serverRecord.Id,
-						VotingEventSignatureVersion = serverRecord.VotingEventSignatureVersion,
-						PublicKey = Util.GetPublicKey(Util.DecodeHex(serverRecord.PublicKey))
-					};
-				}
+		
+		Console.WriteLine("Reading servers ...");
+		
+		using var serversCsvReader = ServersCsvReader.Open(serversCsvFile);
+		
+		foreach (var serverRecord in serversCsvReader.GetRecords()) {
+			if (!servers.ContainsKey(serverRecord.Id)) {
+				servers[serverRecord.Id] = new Server() {
+					Id = serverRecord.Id,
+					VotingEventSignatureVersion = serverRecord.VotingEventSignatureVersion,
+					PublicKey = Util.GetPublicKey(Util.DecodeHex(serverRecord.PublicKey)),
+				};
 			}
 		}
 	}
