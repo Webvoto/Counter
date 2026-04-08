@@ -122,7 +122,7 @@ public class LogValidator {
 			record.VoterContactId,
 			record.SubmitVoteFailureCode,
 			record.CausedVoterLock,
-			],
+		],
 
 		2 => [
 			record.LogNumber,
@@ -140,7 +140,7 @@ public class LogValidator {
 			record.PasswordCheckFailureCode,
 			record.PasswordId,
 			record.CampaignNotificationId,
-			],
+		],
 
 		4 => [
 			.. getSignedFields(record, 3),

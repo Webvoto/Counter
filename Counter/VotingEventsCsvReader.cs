@@ -1,4 +1,5 @@
 ﻿using CsvHelper;
+using CsvHelper.Configuration.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Formats.Asn1;
@@ -77,28 +78,39 @@ namespace Counter {
 		public string CausedVoterLock { get; set; }
 
 		// V2
+		[Optional]
 		public string ServerSignature { get; set; }
 
+		[Optional]
 		public string LogNumber { get; set; }
 
+		[Optional]
 		public string Sequence { get; set; }
 
+		[Optional]
 		public string WorkerId { get; set; }
 
+		[Optional]
 		public string VoteBoxId { get; set; }
 
+		[Optional]
 		public string Details { get; set; }
 
 		// V3
+		[Optional]
 		public string ChainedLogId { get; set; }
 
+		[Optional]
 		public string PasswordCheckFailureCode { get; set; }
 
+		[Optional]
 		public string PasswordId { get; set; }
 
+		[Optional]
 		public string CampaignNotificationId { get; set; }
 
 		// V4
+		[Optional]
 		public string VoterAddressId { get; set; }
 
 	}
