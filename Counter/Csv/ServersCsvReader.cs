@@ -13,6 +13,8 @@ public class ServerCsvRecord {
 
 	public int VotingEventSignatureVersion { get; set; }
 
+	public int OptionSignatureVersion { get; set; }
+
 	public string MachineName { get; set; }
 
 	public string DateStarted { get; set; }

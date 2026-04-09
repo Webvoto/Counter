@@ -32,10 +32,7 @@ namespace Counter {
 		private const int BatchSize = 1000;
 
 		private readonly ServerProvider serverProvider;
-		private RSA decryptionKey;
-		private string decryptionKeyPublicKeyThumbprint;
-		private WebVaultKeyParameters decryptionKeyParams;
-		private WebVaultClient webVaultClient;
+		private Dictionary<string, RSA> decryptionKeys = [];
 		private X509Certificate2 signatureCertificate;
 		private RSA signatureCertificatePublicKey;
 
@@ -43,50 +40,43 @@ namespace Counter {
 			this.serverProvider = serverProvider;
 		}
 
-		public void Initialize(FileInfo signatureCertificateFile, FileInfo decryptionKeyFile) {
+		public void Initialize(FileInfo signatureCertificateFile, IEnumerable<FileInfo> decryptionKeyFiles) {
 			
 			Console.WriteLine("Reading signature certificate ...");
 			signatureCertificate = X509CertificateLoader.LoadCertificateFromFile(signatureCertificateFile.FullName);
 			signatureCertificatePublicKey = signatureCertificate.GetRSAPublicKey();
 			
-			if (!decryptionKeyFile.Exists) {
-				Console.WriteLine("WARNING: Decryption key not found, votes will only be checked!");
+			if (!decryptionKeyFiles.Any()) {
+				Console.WriteLine("WARNING: Decryption keys not found, votes will only be checked!");
 			} else {
-				Console.WriteLine("Reading decryption key ...");
-				if (decryptionKeyFile.Extension.Equals(".pem", StringComparison.InvariantCultureIgnoreCase)) {
-					initializeLocalDecryptionKey(decryptionKeyFile);
-				} else if (decryptionKeyFile.Extension.Equals(".json", StringComparison.InvariantCultureIgnoreCase)) {
-					initializeRemoteDecryptionKey(decryptionKeyFile);
-				} else {
-					throw new Exception($"Unexpected decryption key file extension: '{decryptionKeyFile.Extension}'");
+				Console.WriteLine("Reading decryption keys ...");
+				foreach (var decryptionKeyFile in decryptionKeyFiles) {
+					loadDecryptionKey(decryptionKeyFile);
 				}
 			}
 		}
 
-		private void initializeLocalDecryptionKey(FileInfo decryptionKeyFile) {
+		private void loadDecryptionKey(FileInfo decryptionKeyFile) {
 			var decryptionKeyPkcs8Pem = File.ReadAllBytes(decryptionKeyFile.FullName);
 			var decryptionKeyPkcs8Bytes = Util.DecodePem(decryptionKeyPkcs8Pem);
 			
-			Console.Write("Please provide the decryption key file password: ");
+			Console.Write($"Please provide the password for the decryption key '{decryptionKeyFile.Name}': ");
 			var password = Console.ReadLine();
 			
-			decryptionKey = RSA.Create();
+			var decryptionKey = RSA.Create();
 			decryptionKey.ImportEncryptedPkcs8PrivateKey(Encoding.UTF8.GetBytes(password), decryptionKeyPkcs8Bytes, out _);
-			decryptionKeyPublicKeyThumbprint = Convert.ToHexStringLower(SHA256.HashData(decryptionKey.ExportSubjectPublicKeyInfo()));
-		}
+			var decryptionKeyPublicKeyThumbprint = Convert.ToHexStringLower(SHA256.HashData(decryptionKey.ExportSubjectPublicKeyInfo()));
 
-		private void initializeRemoteDecryptionKey(FileInfo decryptionKeyFile) {
-			decryptionKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(decryptionKeyFile.FullName));
-			webVaultClient = new WebVaultClient(decryptionKeyParams.Endpoint, decryptionKeyParams.ApiKey);
+			decryptionKeys[decryptionKeyPublicKeyThumbprint] = decryptionKey;
 		}
 
 		public async Task<ElectionResultCollection> CountAsync(FileInfo votesCsvFile, int degreeOfParallelism) {
 
 			var results = new ElectionResultCollection();
 
-			if (decryptionKey != null || decryptionKeyParams != null) {
+			if (decryptionKeys.Count > 0) {
 
-				// Decryption key given, check and count votes
+				// Decryption keys given, check and count votes
 
 				var decryptionQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
 				var countingQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
@@ -113,7 +103,7 @@ namespace Counter {
 
 			} else {
 
-				// Decryption key not given, only check votes
+				// Decryption keys not given, only check votes
 
 				var checkingQueue = Channel.CreateBounded<VoteBatch>(degreeOfParallelism);
 				var checkingTasks = new List<Task>();
@@ -156,7 +146,7 @@ namespace Counter {
 
 		private async Task decryptVotesAsync(ChannelReader<VoteBatch> inQueue, ChannelWriter<VoteBatch> outQueue) {
 			await foreach (var batch in inQueue.ReadAllAsync()) {
-				batch.DecryptionTable = await decryptContentEncryptionKeysAsync(batch.EncryptedVotes);
+				batch.DecryptionTable = decryptContentEncryptionKeys(batch.EncryptedVotes);
 				Console.Write($"[{batch.Index:D3}D]");
 				await outQueue.WriteAsync(batch);
 			}
@@ -192,18 +182,15 @@ namespace Counter {
 			return new Vote(poolId, slot, encodedValue, cmsSignature, serverSignature, csvEntry.ServerInstanceId, value, voteEncryptionPublicKeyThumbprint);
 		}
 
-		private async Task<DecryptionTable> decryptContentEncryptionKeysAsync(List<Vote> votes) {
-			if (decryptionKey != null) {
-				var voteEncryptedWithWrongKey = votes.FirstOrDefault(v => v.VoteEncryptionPublicKeyThumbprint != decryptionKeyPublicKeyThumbprint);
-				if (voteEncryptedWithWrongKey != null) {
-					throw new Exception($"Vote {voteEncryptedWithWrongKey.PoolId}:{voteEncryptedWithWrongKey.SlotNumber} is encrypted with wrong key (expected: {decryptionKeyPublicKeyThumbprint}, actual: {voteEncryptedWithWrongKey.VoteEncryptionPublicKeyThumbprint})");
-				}
-			}
-			var ciphers = votes.Select(v => getEncryptedCek(v.Value.EncryptedChoices));
-			var plaintexts = decryptionKey != null
-				? ciphers.Select(c => decryptionKey.Decrypt(c, RSAEncryptionPadding.OaepSHA256))
-				: await webVaultClient.DecryptBatchAsync(decryptionKeyParams.KeyId, ciphers);
-			return new DecryptionTable(ciphers, plaintexts);
+		private DecryptionTable decryptContentEncryptionKeys(List<Vote> votes) {
+			var encryptedCeks = votes.ToDictionary(v => v, v => getEncryptedCek(v.Value.EncryptedChoices));
+			var decryptedCeks = votes.ToDictionary(
+				v => v,
+				v => decryptionKeys.TryGetValue(v.VoteEncryptionPublicKeyThumbprint, out var decryptionKey)
+					? decryptionKey.Decrypt(encryptedCeks[v], RSAEncryptionPadding.OaepSHA256)
+					: throw new Exception($"Vote {v.PoolId}:{v.SlotNumber} is encrypted with unknown key: {v.VoteEncryptionPublicKeyThumbprint}")
+				);
+			return new DecryptionTable(votes.Select(v => encryptedCeks[v]), votes.Select(v => decryptedCeks[v]));
 		}
 
 		private void checkVote(Vote vote) {

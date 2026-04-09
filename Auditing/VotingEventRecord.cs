@@ -10,8 +10,6 @@ namespace Webvoto.VotingSystem.Auditing {
 		
 		public string TypeCode { get; set; }
 		
-		public int ServerInstanceId { get; set; }
-		
 		public Guid? ChainedLogId { get; set; }
 		
 		public int? LogNumber { get; set; }
@@ -79,8 +77,6 @@ namespace Webvoto.VotingSystem.Auditing {
 		public bool? CausedVoterLock { get; set; }
 		
 		public string Details { get; set; }
-		
-		public byte[] ServerSignature { get; set; }
 		
 		public string PasswordCheckFailureCode { get; set; }
 		

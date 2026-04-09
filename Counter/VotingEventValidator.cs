@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Webvoto.VotingSystem.Auditing;
 
 namespace Counter;
 
@@ -52,14 +51,12 @@ public partial class VotingEventValidator(
 
 		using var reader = VotingEventsCsvReader.Open(file);
 
-		foreach (var record in reader.GetRecords()) {
-
-			var ev = parseRecord(record);
+		foreach (var ev in reader.GetRecords()) {
 
 			var key = getValidatorKey(ev, out var isChained);
 
 			var validator = validators.GetOrAdd(key, _ => {
-				var server = serverProvider.GetRequiredServer(record.ServerInstanceId);
+				var server = serverProvider.GetRequiredServer(ev.ServerInstanceId);
 				var v = new LogValidator(server, vr, isChained);
 				v.Start();
 				return v;
@@ -79,7 +76,7 @@ public partial class VotingEventValidator(
 		Console.WriteLine("DONE");
 	}
 
-	private static string getValidatorKey(VotingEventRecord e, out bool isChained) {
+	private static string getValidatorKey(SignedVotingEventRecord e, out bool isChained) {
 		isChained = e.ChainedLogId.HasValue || e.LogNumber.HasValue;
 		return $"{e.ServerInstanceId}:{e.ChainedLogId}:{e.LogNumber}";
 	}
@@ -116,68 +113,4 @@ Recommendation:
 			");
 		}
 	}
-
-	static VotingEventRecord parseRecord(VotingEventCsvRecord r) => new() {
-		Id = parseGuid(r.Id),
-		DateUtc = r.DateUtc,
-		TypeCode = parseString(r.TypeCode),
-		ServerInstanceId = r.ServerInstanceId,
-		ChainedLogId = parseNullableGuid(r.ChainedLogId),
-		LogNumber = parseNullableInt(r.LogNumber),
-		Sequence = parseNullableInt(r.Sequence),
-		SubscriptionId = parseNullableGuid(r.SubscriptionId),
-		SessionId = parseNullableGuid(r.SessionId),
-		QuestionId = parseNullableGuid(r.QuestionId),
-		VoterId = parseNullableGuid(r.VoterId),
-		MemberId = parseNullableGuid(r.MemberId),
-		AgentId = parseNullableGuid(r.AgentId),
-		WorkerId = parseNullableGuid(r.WorkerId),
-		VoteBoxId = parseNullableGuid(r.VoteBoxId),
-		VotingChannelCode = parseString(r.VotingChannelCode),
-		RemoteIP = parseString(r.RemoteIP),
-		RemotePort = parseNullableInt(r.RemotePort),
-		AzureRef = parseString(r.AzureRef),
-		UserAgentString = parseString(r.UserAgentString),
-		IdentifierKindCode = parseString(r.IdentifierKindCode),
-		Identifier = parseString(r.Identifier),
-		DelegateVoterId = parseNullableGuid(r.DelegateVoterId),
-		VoterOtpId = parseNullableGuid(r.VoterOtpId),
-		BioSessionId = parseNullableGuid(r.BioSessionId),
-		BioAuthenticationFailureCode = parseString(r.BioAuthenticationFailureCode),
-		BioEnrollmentFailureCode = parseString(r.BioEnrollmentFailureCode),
-		CertificateTypeCode = parseString(r.CertificateTypeCode),
-		CloudCertificateAuthenticationFailureCode = parseString(r.CloudCertificateAuthenticationFailureCode),
-		AuthServerAuthenticationFailureCode = parseString(r.AuthServerAuthenticationFailureCode),
-		WebPkiAuthenticationFailureCode = parseString(r.WebPkiAuthenticationFailureCode),
-		OtpCheckFailureCode = parseString(r.OtpCheckFailureCode),
-		CertificateId = parseNullableGuid(r.CertificateId),
-		ValidationResultsBlobId = parseNullableGuid(r.ValidationResultsBlobId),
-		VoterContactId = parseNullableGuid(r.VoterContactId),
-		SubmitVoteFailureCode = parseString(r.SubmitVoteFailureCode),
-		CausedVoterLock = parseNullableBool(r.CausedVoterLock),
-		Details = parseString(r.Details),
-		ServerSignature = parseBinary(r.ServerSignature),
-		PasswordCheckFailureCode = parseString(r.PasswordCheckFailureCode),
-		PasswordId = parseNullableGuid(r.PasswordId),
-		CampaignNotificationId = parseNullableGuid(r.CampaignNotificationId),
-		VoterAddressId = parseNullableGuid(r.VoterAddressId),
-	};
-
-	private static Guid parseGuid(string s) => Guid.Parse(s);
-
-	private static Guid? parseNullableGuid(string s) => isNull(s) ? null : Guid.Parse(s);
-
-	private static string parseString(string s) => isNull(s) ? null : s;
-
-	private static byte[] parseBinary(string s) => isNull(s) ? null : Util.DecodeHex(s);
-
-	private static int? parseNullableInt(string s) => isNull(s) ? null : int.Parse(s);
-
-	private static bool? parseNullableBool(string s) => isNull(s) ? null : s switch {
-		"0" => false,
-		"1" => true,
-		_ => throw new FormatException($"Bad bit value: \"s\"")
-	};
-
-	private static bool isNull(string s) => s == "NULL" || s == null;
 }

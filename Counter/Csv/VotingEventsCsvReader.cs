@@ -1,8 +1,16 @@
 ﻿using CsvHelper.Configuration.Attributes;
 using System;
 using System.IO;
+using Webvoto.VotingSystem.Auditing;
 
 namespace Counter.Csv;
+
+public class SignedVotingEventRecord : VotingEventRecord {
+
+	public int ServerInstanceId { get; set; }
+
+	public byte[] ServerSignature { get; set; }
+}
 
 public class VotingEventCsvRecord {
 
@@ -108,7 +116,7 @@ public class VotingEventCsvRecord {
 	public string VoterAddressId { get; set; }
 }
 
-public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord> {
+public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedVotingEventRecord> {
 
 	private VotingEventsCsvReader(FileInfo file) : base(file) {
 	}
@@ -120,4 +128,50 @@ public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord> {
 		reader.Open();
 		return reader;
 	}
+
+	protected override SignedVotingEventRecord ParseRecord(VotingEventCsvRecord r) => new() {
+		Id = ParseGuid(r.Id),
+		DateUtc = r.DateUtc,
+		TypeCode = ParseString(r.TypeCode),
+		ServerInstanceId = r.ServerInstanceId,
+		ChainedLogId = ParseNullableGuid(r.ChainedLogId),
+		LogNumber = ParseNullableInt(r.LogNumber),
+		Sequence = ParseNullableInt(r.Sequence),
+		SubscriptionId = ParseNullableGuid(r.SubscriptionId),
+		SessionId = ParseNullableGuid(r.SessionId),
+		QuestionId = ParseNullableGuid(r.QuestionId),
+		VoterId = ParseNullableGuid(r.VoterId),
+		MemberId = ParseNullableGuid(r.MemberId),
+		AgentId = ParseNullableGuid(r.AgentId),
+		WorkerId = ParseNullableGuid(r.WorkerId),
+		VoteBoxId = ParseNullableGuid(r.VoteBoxId),
+		VotingChannelCode = ParseString(r.VotingChannelCode),
+		RemoteIP = ParseString(r.RemoteIP),
+		RemotePort = ParseNullableInt(r.RemotePort),
+		AzureRef = ParseString(r.AzureRef),
+		UserAgentString = ParseString(r.UserAgentString),
+		IdentifierKindCode = ParseString(r.IdentifierKindCode),
+		Identifier = ParseString(r.Identifier),
+		DelegateVoterId = ParseNullableGuid(r.DelegateVoterId),
+		VoterOtpId = ParseNullableGuid(r.VoterOtpId),
+		BioSessionId = ParseNullableGuid(r.BioSessionId),
+		BioAuthenticationFailureCode = ParseString(r.BioAuthenticationFailureCode),
+		BioEnrollmentFailureCode = ParseString(r.BioEnrollmentFailureCode),
+		CertificateTypeCode = ParseString(r.CertificateTypeCode),
+		CloudCertificateAuthenticationFailureCode = ParseString(r.CloudCertificateAuthenticationFailureCode),
+		AuthServerAuthenticationFailureCode = ParseString(r.AuthServerAuthenticationFailureCode),
+		WebPkiAuthenticationFailureCode = ParseString(r.WebPkiAuthenticationFailureCode),
+		OtpCheckFailureCode = ParseString(r.OtpCheckFailureCode),
+		CertificateId = ParseNullableGuid(r.CertificateId),
+		ValidationResultsBlobId = ParseNullableGuid(r.ValidationResultsBlobId),
+		VoterContactId = ParseNullableGuid(r.VoterContactId),
+		SubmitVoteFailureCode = ParseString(r.SubmitVoteFailureCode),
+		CausedVoterLock = ParseNullableBool(r.CausedVoterLock),
+		Details = ParseString(r.Details),
+		ServerSignature = ParseBinary(r.ServerSignature),
+		PasswordCheckFailureCode = ParseString(r.PasswordCheckFailureCode),
+		PasswordId = ParseNullableGuid(r.PasswordId),
+		CampaignNotificationId = ParseNullableGuid(r.CampaignNotificationId),
+		VoterAddressId = ParseNullableGuid(r.VoterAddressId),
+	};
 }

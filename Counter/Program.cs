@@ -1,17 +1,20 @@
 using Counter;
 using Counter.Csv;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
+using Webvoto.VotingSystem.Auditing;
 
-const string ServersFileName = "servers.csv";
-const string VotesFileName = "votes.csv";
+const string ServersFileName = "6-servers.csv";
+const string VotesFileName = "10-votos.csv";
 const string SignatureCertFileName = "signature-certificate.cer";
-const string DecryptionKeyFileName = "decryption-key.pem";
-const string PartiesFileName = "parties.csv";
-const string DistrictsFileName = "districts.csv";
-const string VotingEventsFileName = "events.csv";
+const string DecryptionKeyFilePattern = "chave-*-privada.pem";
+const string OptionsFileName = "5-chapas.csv";
+const string DistrictsFileName = "11-distritos.csv";
+const string VotingEventsFileName = "7-voting-events.csv";
 
 try {
 	await runAsync(args);
@@ -36,8 +39,8 @@ async static Task runAsync(string[] args) {
 	var serversCsvFile = getFileInfo(baseDir, ServersFileName);
 	var votesCsvFile = getFileInfo(baseDir, VotesFileName);
 	var signatureCertificateFile = getFileInfo(baseDir, SignatureCertFileName);
-	var decryptionKeyFile = getFileInfo(baseDir, DecryptionKeyFileName);
-	var partiesCsvFile = getFileInfo(baseDir, PartiesFileName);
+	var decryptionKeyFiles = baseDir.GetFiles(DecryptionKeyFilePattern);
+	var optionsCsvFile = getFileInfo(baseDir, OptionsFileName);
 	var districtsCsvFile = getFileInfo(baseDir, DistrictsFileName);
 	var votingEventsCsvFile = getFileInfo(baseDir, VotingEventsFileName);
 
@@ -49,12 +52,24 @@ async static Task runAsync(string[] args) {
 
 		ensureFileExists(signatureCertificateFile);
 
-		// Parties and districts are only needed later, but we'll read them ahead of time to raise exceptions sooner rather than later
-		var parties = partiesCsvFile.Exists ? PartiesCsvReader.Read(partiesCsvFile) : null;
+		var options = optionsCsvFile.Exists ? OptionsCsvReader.Read(optionsCsvFile) : null;
 		var districts = districtsCsvFile.Exists ? DistrictsCsvReader.Read(districtsCsvFile) : null;
 
+		if (options != null) {
+			foreach (var option in options) {
+				if (!option.ServerInstanceId.HasValue) {
+					Console.WriteLine($"[WARNING] Option {option.Id} is not signed");
+				} else {
+					var server = serverProvider.GetRequiredServer(option.ServerInstanceId.Value);
+					if (!server.PublicKey.VerifyData(OptionEncoding.Encode(option, server.OptionSignatureVersion), option.ServerSignature, HashAlgorithmName.SHA256)) {
+						Console.WriteLine($"[WARNING] Option {option.Id} has an invalid signature");
+					}
+				}
+			}
+		}
+
 		var counter = new VoteCounter(serverProvider);
-		counter.Initialize(signatureCertificateFile, decryptionKeyFile);
+		counter.Initialize(signatureCertificateFile, decryptionKeyFiles);
 		var results = await counter.CountAsync(votesCsvFile, degreeOfParallelism);
 
 		if (results == null) {
@@ -69,7 +84,7 @@ async static Task runAsync(string[] args) {
 			var resultsFileName = $"results-{timestamp}.csv";
 			var resultsFile = getFileInfo(baseDir, resultsFileName);
 			using (var resultsFileStream = resultsFile.Create()) {
-				var resultsWriter = new ResultsCsvWriter(parties, districts);
+				var resultsWriter = new ResultsCsvWriter(options, districts);
 				resultsWriter.Write(results, resultsFileStream);
 			}
 			Console.WriteLine($"Results written to '{resultsFileName}'");

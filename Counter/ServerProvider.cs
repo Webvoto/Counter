@@ -12,6 +12,8 @@ public class Server {
 
 	public int VotingEventSignatureVersion { get; set; }
 
+	public int OptionSignatureVersion { get; set; }
+
 	public ECDsa PublicKey { get; set; }
 }
 
@@ -30,6 +32,7 @@ public class ServerProvider {
 				servers[serverRecord.Id] = new Server() {
 					Id = serverRecord.Id,
 					VotingEventSignatureVersion = serverRecord.VotingEventSignatureVersion,
+					OptionSignatureVersion = serverRecord.OptionSignatureVersion,
 					PublicKey = Util.GetPublicKey(Util.DecodeHex(serverRecord.PublicKey)),
 				};
 			}

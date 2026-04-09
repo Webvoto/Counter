@@ -1,9 +1,14 @@
 {
-  "profiles": {
-		"Counter": {
+	"profiles": {
+		"Dev": {
 			"commandName": "Project",
 			"commandLineArgs": "",
-			"workingDirectory": "..\\TestFiles"
+			"workingDirectory": "..\\WorkDir\\Dev"
+		},
+		"Prd": {
+			"commandName": "Project",
+			"commandLineArgs": "",
+			"workingDirectory": "..\\WorkDir\\Prd"
 		}
-  }
+	}
 }

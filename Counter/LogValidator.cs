@@ -1,3 +1,4 @@
+using Counter.Csv;
 using System.Security.Cryptography;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -13,7 +14,7 @@ public class LogValidator(
 
 ) {
 
-	private readonly Channel<VotingEventRecord> channel = Channel.CreateBounded<VotingEventRecord>(500);
+	private readonly Channel<SignedVotingEventRecord> channel = Channel.CreateBounded<SignedVotingEventRecord>(500);
 
 	public Task ProcessingTask { get; private set; }
 
@@ -21,7 +22,7 @@ public class LogValidator(
 		ProcessingTask = Task.Run(processAsync);
 	}
 
-	public async Task EnqueueAsync(VotingEventRecord record) {
+	public async Task EnqueueAsync(SignedVotingEventRecord record) {
 		await channel.Writer.WriteAsync(record);
 	}
 
@@ -31,7 +32,7 @@ public class LogValidator(
 
 	private async Task processAsync() {
 
-		VotingEventRecord previous = null;
+		SignedVotingEventRecord previous = null;
 
 		await foreach (var record in channel.Reader.ReadAllAsync()) {
 			var result = verify(record, previous);
@@ -42,7 +43,7 @@ public class LogValidator(
 		}
 	}
 
-	private bool? verify(VotingEventRecord current, VotingEventRecord previous) {
+	private bool? verify(SignedVotingEventRecord current, SignedVotingEventRecord previous) {
 
 		if (current.ServerSignature == null) {
 			return null;

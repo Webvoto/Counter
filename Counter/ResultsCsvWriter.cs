@@ -31,10 +31,10 @@ namespace Counter {
 		private const string BlankVotesLabel = "Votos brancos";
 		private const string NullVotesLabel = "Votos nulos";
 
-		private readonly List<PartyCsvRecord> parties;
+		private readonly List<SignedOptionRecord> parties;
 		private readonly List<DistrictCsvRecord> districts;
 
-		public ResultsCsvWriter(List<PartyCsvRecord> parties, List<DistrictCsvRecord> districts) {
+		public ResultsCsvWriter(List<SignedOptionRecord> parties, List<DistrictCsvRecord> districts) {
 			this.parties = parties;
 			this.districts = districts;
 		}
@@ -71,7 +71,7 @@ namespace Counter {
 
 			foreach (var partyResult in districtResult.PartyResults) {
 				if (!partyResult.IsBlankOrNull) {
-					var party = parties?.FirstOrDefault(p => p.Id.Equals(partyResult.Identifier, StringComparison.OrdinalIgnoreCase));
+					var party = parties?.FirstOrDefault(p => p.Id.ToString().Equals(partyResult.Identifier, StringComparison.OrdinalIgnoreCase));
 					if (party != null && !party.IsEnabled) {
 						nullifiedPartyResults.Add(partyResult);
 					}
@@ -95,14 +95,14 @@ namespace Counter {
 			// Yield enabled parties without votes (not in `districtResult.PartyResults`)
 
 			if (parties != null) {
-				foreach (var party in parties.Where(p => p.IsEnabled && p.QuestionId.Equals(electionId, StringComparison.OrdinalIgnoreCase))) {
-					if (!districtResult.PartyResults.Any(r => r.Identifier.Equals(party.Id, StringComparison.OrdinalIgnoreCase))) {
+				foreach (var party in parties.Where(p => p.IsEnabled && p.QuestionId.ToString().Equals(electionId, StringComparison.OrdinalIgnoreCase))) {
+					if (!districtResult.PartyResults.Any(r => r.Identifier.Equals(party.Id.ToString(), StringComparison.OrdinalIgnoreCase))) {
 						yield return new ResultCsvRecord {
 							ElectionId = electionId,
 							ElectionLabel = electionLabel,
 							DistrictId = districtResult.Id,
 							DistrictLabel = districtLabel,
-							PartyIdentifier = party.Id,
+							PartyIdentifier = party.Id.ToString(),
 							PartyLabel = getPartyLabel(party),
 							Votes = 0,
 						};
@@ -140,7 +140,7 @@ namespace Counter {
 		}
 
 		private string getElectionLabel(ElectionResult electionResult) {
-			var partyFromElection = parties?.FirstOrDefault(p => p.QuestionId.Equals(electionResult.Id, StringComparison.OrdinalIgnoreCase));
+			var partyFromElection = parties?.FirstOrDefault(p => p.QuestionId.ToString().Equals(electionResult.Id, StringComparison.OrdinalIgnoreCase));
 			return partyFromElection != null ? $"{partyFromElection.SessionName} - {partyFromElection.QuestionName}" : null;
 		}
 
@@ -157,12 +157,12 @@ namespace Counter {
 				return NullVotesLabel;
 			}
 
-			var party = parties?.FirstOrDefault(p => p.Id.Equals(partyResult.Identifier, StringComparison.OrdinalIgnoreCase));
+			var party = parties?.FirstOrDefault(p => p.Id.ToString().Equals(partyResult.Identifier, StringComparison.OrdinalIgnoreCase));
 
 			return party != null ? getPartyLabel(party) : null;
 		}
 
-		private string getPartyLabel(PartyCsvRecord party) {
+		private string getPartyLabel(SignedOptionRecord party) {
 
 			var hasName = !string.IsNullOrEmpty(party.Name);
 			var hasNumber = !string.IsNullOrEmpty(party.Identifier) && !party.Identifier.Equals("NULL", StringComparison.OrdinalIgnoreCase);

@@ -7,6 +7,8 @@ namespace Webvoto.VotingSystem.Auditing;
 
 public static class VotingEventEncoding {
 
+	public static readonly int LatestVersion = 4; // itentionally not a const!
+
 	public static byte[] Encode(VotingEventRecord ve, int version, byte[] lastEventSignature = null)
 		=> Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(getFields(ve, version, lastEventSignature)));
 
@@ -15,7 +17,7 @@ public static class VotingEventEncoding {
 		/*
 		 * DO NOT CHANGE EXISTING VERSIONS!
 		 * 
-		 * When a new field is added to VotingEvent, create a new version with a new field list containing the new field and update Constants.VotingEventSignatureVersion accordingly
+		 * When a new field is added to VotingEventRecord, create a new version with a new field list containing the new field and update the LastestVersion above
 		 */
 
 		1 => [
