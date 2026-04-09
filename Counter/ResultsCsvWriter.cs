@@ -32,9 +32,9 @@ namespace Counter {
 		private const string NullVotesLabel = "Votos nulos";
 
 		private readonly List<SignedOptionRecord> parties;
-		private readonly List<DistrictCsvRecord> districts;
+		private readonly List<DistrictRecord> districts;
 
-		public ResultsCsvWriter(List<SignedOptionRecord> parties, List<DistrictCsvRecord> districts) {
+		public ResultsCsvWriter(List<SignedOptionRecord> parties, List<DistrictRecord> districts) {
 			this.parties = parties;
 			this.districts = districts;
 		}
@@ -61,7 +61,7 @@ namespace Counter {
 			csvWriter.WriteRecords(orderedRecords);
 		}
 
-		private IEnumerable<ResultCsvRecord> getDistrictRecords(string electionId, string electionLabel, DistrictResult districtResult) {
+		private IEnumerable<ResultCsvRecord> getDistrictRecords(Guid electionId, string electionLabel, DistrictResult districtResult) {
 			
 			var districtLabel = getDistrictLabel(districtResult);
 
@@ -82,9 +82,9 @@ namespace Counter {
 
 			foreach (var partyResult in districtResult.PartyResults.Except(nullifiedPartyResults)) {
 				yield return new ResultCsvRecord {
-					ElectionId = electionId,
+					ElectionId = electionId.ToString(),
 					ElectionLabel = electionLabel,
-					DistrictId = districtResult.Id,
+					DistrictId = districtResult.Id.ToString(),
 					DistrictLabel = districtLabel,
 					PartyIdentifier = partyResult.Identifier,
 					PartyLabel = getPartyLabel(partyResult),
@@ -95,12 +95,12 @@ namespace Counter {
 			// Yield enabled parties without votes (not in `districtResult.PartyResults`)
 
 			if (parties != null) {
-				foreach (var party in parties.Where(p => p.IsEnabled && p.QuestionId.ToString().Equals(electionId, StringComparison.OrdinalIgnoreCase))) {
+				foreach (var party in parties.Where(p => p.IsEnabled && p.QuestionId == electionId)) {
 					if (!districtResult.PartyResults.Any(r => r.Identifier.Equals(party.Id.ToString(), StringComparison.OrdinalIgnoreCase))) {
 						yield return new ResultCsvRecord {
-							ElectionId = electionId,
+							ElectionId = electionId.ToString(),
 							ElectionLabel = electionLabel,
-							DistrictId = districtResult.Id,
+							DistrictId = districtResult.Id.ToString(),
 							DistrictLabel = districtLabel,
 							PartyIdentifier = party.Id.ToString(),
 							PartyLabel = getPartyLabel(party),
@@ -114,9 +114,9 @@ namespace Counter {
 
 			if (!districtResult.PartyResults.Any(p => p.Identifier.Equals(PartyResult.BlankIdentifier, StringComparison.OrdinalIgnoreCase))) {
 				yield return new ResultCsvRecord {
-					ElectionId = electionId,
+					ElectionId = electionId.ToString(),
 					ElectionLabel = electionLabel,
-					DistrictId = districtResult.Id,
+					DistrictId = districtResult.Id.ToString(),
 					DistrictLabel = districtLabel,
 					PartyIdentifier = PartyResult.BlankIdentifier,
 					PartyLabel = BlankVotesLabel,
@@ -128,9 +128,9 @@ namespace Counter {
 
 			if (!districtResult.PartyResults.Any(p => p.Identifier.Equals(PartyResult.NullIdentifier, StringComparison.OrdinalIgnoreCase))) {
 				yield return new ResultCsvRecord {
-					ElectionId = electionId,
+					ElectionId = electionId.ToString(),
 					ElectionLabel = electionLabel,
-					DistrictId = districtResult.Id,
+					DistrictId = districtResult.Id.ToString(),
 					DistrictLabel = districtLabel,
 					PartyIdentifier = PartyResult.NullIdentifier,
 					PartyLabel = NullVotesLabel,
@@ -140,12 +140,12 @@ namespace Counter {
 		}
 
 		private string getElectionLabel(ElectionResult electionResult) {
-			var partyFromElection = parties?.FirstOrDefault(p => p.QuestionId.ToString().Equals(electionResult.Id, StringComparison.OrdinalIgnoreCase));
+			var partyFromElection = parties?.FirstOrDefault(p => p.QuestionId == electionResult.Id);
 			return partyFromElection != null ? $"{partyFromElection.SessionName} - {partyFromElection.QuestionName}" : null;
 		}
 
 		private string getDistrictLabel(DistrictResult districtResult)
-			=> districts?.FirstOrDefault(d => d.DistrictId.Equals(districtResult.Id, StringComparison.OrdinalIgnoreCase))?.DistrictName ?? "(não especificado)";
+			=> districts?.FirstOrDefault(d => d.DistrictId == districtResult.Id)?.DistrictName ?? "(não especificado)";
 
 		private string getPartyLabel(PartyResult partyResult) {
 

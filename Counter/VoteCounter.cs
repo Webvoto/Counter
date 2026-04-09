@@ -220,8 +220,8 @@ namespace Counter {
 			var decodedChoices = VoteEncoding.DecodeChoices(decryptedChoices);
 			foreach (var choice in decodedChoices) {
 				results
-					.GetOrAddElection(vote.Value.QuestionId.ToString())
-					.GetOrAddDistrict(vote.Value.MemberDistrictId.ToString())
+					.GetOrAddElection(vote.Value.QuestionId)
+					.GetOrAddDistrict(vote.Value.MemberDistrictId)
 					.GetOrAddParty(choice.ToString())
 					.Increment();
 			}
