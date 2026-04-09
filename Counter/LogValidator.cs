@@ -36,7 +36,9 @@ public class LogValidator(
 		await foreach (var record in channel.Reader.ReadAllAsync()) {
 			var result = verify(record, previous);
 			vr.AddResult(result);
-			previous = record;
+			if (isChained) {
+				previous = record;
+			}
 		}
 	}
 

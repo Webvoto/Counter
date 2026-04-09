@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
@@ -79,13 +79,8 @@ public partial class VotingEventValidator(
 	}
 
 	private static string getValidatorKey(VotingEventRecord e, out bool isChained) {
-		if (e.ChainedLogId.HasValue) {
-			isChained = true;
-			return $"{e.ServerInstanceId}:{e.ChainedLogId}:{e.LogNumber}";
-		} else {
-			isChained = false;
-			return $"{e.ServerInstanceId}";
-		}
+		isChained = e.ChainedLogId.HasValue || e.LogNumber.HasValue;
+		return $"{e.ServerInstanceId}:{e.ChainedLogId}:{e.LogNumber}";
 	}
 
 	private void logResults(VotingEventValidationResults vr) {
