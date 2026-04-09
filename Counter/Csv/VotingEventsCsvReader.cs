@@ -1,11 +1,8 @@
-﻿using CsvHelper;
-using CsvHelper.Configuration.Attributes;
+﻿using CsvHelper.Configuration.Attributes;
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 
-namespace Counter;
+namespace Counter.Csv;
 
 public class VotingEventCsvRecord {
 
@@ -111,32 +108,16 @@ public class VotingEventCsvRecord {
 	public string VoterAddressId { get; set; }
 }
 
-public class VotingEventsCsvReader : IDisposable {
+public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord> {
 
-	private readonly Stream stream;
-	private readonly StreamReader streamReader;
-	private readonly CsvReader csvReader;
+	private VotingEventsCsvReader(FileInfo file) : base(file) {
+	}
+
+	protected override string EnvironmentVariableMoniker => "EVENTS";
 
 	public static VotingEventsCsvReader Open(FileInfo file) {
-		var stream = file.OpenRead();
-		var streamReader = new StreamReader(stream);
-		var useInvariantCulture = bool.TryParse(Environment.GetEnvironmentVariable("COUNTER_USE_INVARIANT_CULTURE_FOR_VOTING_EVENTS_CSV"), out var b) && b;
-		var csvReader = new CsvReader(streamReader, useInvariantCulture ? CultureInfo.InvariantCulture : CultureInfo.CurrentCulture);
-		return new VotingEventsCsvReader(stream, streamReader, csvReader);
-	}
-
-	private VotingEventsCsvReader(Stream stream, StreamReader streamReader, CsvReader csvReader) {
-		this.stream = stream;
-		this.streamReader = streamReader;
-		this.csvReader = csvReader;
-	}
-
-	public IEnumerable<VotingEventCsvRecord> GetRecords()
-		=> csvReader.GetRecords<VotingEventCsvRecord>();
-
-	public void Dispose() {
-		csvReader.Dispose();
-		streamReader.Dispose();
-		stream.Dispose();
+		var reader = new VotingEventsCsvReader(file);
+		reader.Open();
+		return reader;
 	}
 }
