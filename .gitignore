@@ -16,3 +16,6 @@ TestFiles/votes.csv
 
 # Generated signed results
 TestFiles/*.p7s
+
+# Generated nuget packages
+Scripts/*.nupkg
