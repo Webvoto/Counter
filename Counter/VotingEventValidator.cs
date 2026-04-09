@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Linq;
@@ -183,5 +183,5 @@ Recommendation:
 		_ => throw new FormatException($"Bad bit value: \"s\"")
 	};
 
-	private static bool isNull(string s) => s == "NULL";
+	private static bool isNull(string s) => s == "NULL" || s == null;
 }
