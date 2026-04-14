@@ -1,9 +1,14 @@
 {
-  "profiles": {
-		"Counter": {
+	"profiles": {
+		"Dev": {
 			"commandName": "Project",
-			"commandLineArgs": "signature-certificate.cer votes.csv decryption-key-parameters.json parties.csv",
-			"workingDirectory": "..\\TestFiles"
+			"commandLineArgs": "",
+			"workingDirectory": "..\\WorkDir\\Dev"
+		},
+		"Prd": {
+			"commandName": "Project",
+			"commandLineArgs": "",
+			"workingDirectory": "..\\WorkDir\\Prd"
 		}
-  }
+	}
 }

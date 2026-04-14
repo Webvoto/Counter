@@ -9,10 +9,11 @@
 [Oo]bj/
 
 # Decryption key parameters
-TestFiles/*.json
+WorkDir/dev/*.json
 
-# Test votes CSV (committed as zip file)
-TestFiles/votes.csv
+# Generated results
+WorkDir/dev/results-*
+WorkDir/prd/results-*
 
-# Generated signed results
-TestFiles/*.p7s
+# Generated nuget packages
+Scripts/*.nupkg

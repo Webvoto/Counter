@@ -1,17 +1,15 @@
-﻿using CsvHelper.Configuration.Attributes;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 
 namespace Counter {
 
 	public class ElectionResultCollection {
 
-		private readonly ConcurrentDictionary<string, ElectionResult> electionResults = new(StringComparer.InvariantCultureIgnoreCase);
+		private readonly ConcurrentDictionary<Guid, ElectionResult> electionResults = new();
 
-		public ElectionResult GetOrAddElection(string electionId)
+		public ElectionResult GetOrAddElection(Guid electionId)
 			=> electionResults.GetOrAdd(electionId, new ElectionResult(electionId));
 			
 		public IEnumerable<ElectionResult> ElectionResults => electionResults.Values;
@@ -19,17 +17,17 @@ namespace Counter {
 
 	public class ElectionResult {
 
-		private readonly ConcurrentDictionary<string, DistrictResult> districtResults;
+		private readonly ConcurrentDictionary<Guid, DistrictResult> districtResults;
 
-		public string Id { get; }
+		public Guid Id { get; }
 
-		public ElectionResult(string id) {
+		public ElectionResult(Guid id) {
 			Id = id;
-			districtResults = new ConcurrentDictionary<string, DistrictResult>(StringComparer.InvariantCultureIgnoreCase);
+			districtResults = new ConcurrentDictionary<Guid, DistrictResult>();
 		}
 		
-		public DistrictResult GetOrAddDistrict(string id)
-			=> districtResults.GetOrAdd(id ?? "", new DistrictResult(id));
+		public DistrictResult GetOrAddDistrict(Guid id)
+			=> districtResults.GetOrAdd(id, new DistrictResult(id));
 
 		public IEnumerable<DistrictResult> DistrictResults => districtResults.Values;
 	}
@@ -38,9 +36,9 @@ namespace Counter {
 
 		private readonly ConcurrentDictionary<string, PartyResult> partyResults;
 
-		public string Id { get; }
+		public Guid Id { get; }
 
-		public DistrictResult(string id) {
+		public DistrictResult(Guid id) {
 			Id = id;
 			partyResults = new ConcurrentDictionary<string, PartyResult>(StringComparer.InvariantCultureIgnoreCase);
 		}
