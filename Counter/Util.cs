@@ -31,4 +31,25 @@ public static class Util {
 
 	public static bool VerifyServerSignature(ECDsa serverPublicKey, byte[] data, byte[] signature)
 		=> serverPublicKey.VerifyData(data, signature, HashAlgorithmName.SHA256);
+
+	public static string ReadPassword() {
+
+		var password = new StringBuilder();
+		ConsoleKeyInfo key;
+
+		do {
+			key = Console.ReadKey(intercept: true);
+
+			if (key.Key == ConsoleKey.Backspace && password.Length > 0) {
+				password.Remove(password.Length - 1, 1);
+				Console.Write("\b \b");
+			} else if (!char.IsControl(key.KeyChar)) {
+				password.Append(key.KeyChar);
+				Console.Write("*");
+			}
+		} while (key.Key != ConsoleKey.Enter);
+
+		Console.WriteLine();
+		return password.ToString();
+	}
 }

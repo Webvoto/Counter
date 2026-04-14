@@ -61,7 +61,7 @@ namespace Counter {
 			var decryptionKeyPkcs8Bytes = Util.DecodePem(decryptionKeyPkcs8Pem);
 			
 			Console.Write($"Please provide the password for the decryption key '{decryptionKeyFile.Name}': ");
-			var password = Console.ReadLine();
+			var password = Util.ReadPassword();
 			
 			var decryptionKey = RSA.Create();
 			decryptionKey.ImportEncryptedPkcs8PrivateKey(Encoding.UTF8.GetBytes(password), decryptionKeyPkcs8Bytes, out _);
