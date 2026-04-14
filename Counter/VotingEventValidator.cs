@@ -15,14 +15,17 @@ public class VotingEventValidationResults {
 	private int passed;
 	private int indeterminate;
 	private int failed;
+	private int votes;
 
 	public int Passed => passed;
 	public int Indeterminate => indeterminate;
 	public int Failed => failed;
+	public int Votes => votes;
 
 	public int AddPassed() => Interlocked.Increment(ref passed);
 	public int AddIndefinite() => Interlocked.Increment(ref indeterminate);
 	public int AddFailed() => Interlocked.Increment(ref failed);
+	public int AddVote() => Interlocked.Increment(ref votes);
 
 	public int AddResult(bool? result) {
 		if (!result.HasValue) {
@@ -88,7 +91,7 @@ public partial class VotingEventValidator(
 # Voting event integrity check results
 ------------------------------------------------------------
 Checked       : {vr.Checked:N0}
-Passed        : {vr.Passed:N0}
+Passed        : {vr.Passed:N0} ({vr.Votes:N0} votes)
 Indeterminate : {vr.Indeterminate:N0}
 Failed        : {vr.Failed:N0}
 ------------------------------------------------------------

@@ -37,6 +37,9 @@ public class LogValidator(
 		await foreach (var record in channel.Reader.ReadAllAsync()) {
 			var result = verify(record, previous);
 			vr.AddResult(result);
+			if (record.TypeCode == "VTD" && result == true) {
+				vr.AddVote();
+			}
 			if (isChained) {
 				previous = record;
 			}
