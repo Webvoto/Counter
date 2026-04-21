@@ -1,20 +1,19 @@
 using Counter;
 using Counter.Csv;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Webvoto.VotingSystem.Auditing;
 
-const string ServersFileName = "6-servers.csv";
+const string ServersFileName = "06-servers.csv";
 const string VotesFileName = "10-votos.csv";
 const string SignatureCertFileName = "signature-certificate.cer";
 const string DecryptionKeyFilePattern = "chave-*-privada.pem";
-const string OptionsFileName = "5-chapas.csv";
+const string OptionsFileName = "05-chapas.csv";
 const string DistrictsFileName = "11-distritos.csv";
-const string VotingEventsFileName = "7-voting-events.csv";
+const string VotingEventsFileName = "07-voting-events.csv";
 
 try {
 	await runAsync(args);
