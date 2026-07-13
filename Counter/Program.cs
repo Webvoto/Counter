@@ -50,19 +50,19 @@ async static Task runAsync(string[] args) {
 	var options = optionsCsvFile.Exists ? OptionsCsvReader.Read(optionsCsvFile) : null;
 	var districts = districtsCsvFile.Exists ? DistrictsCsvReader.Read(districtsCsvFile) : null;
 
-	if (options != null) {
-		foreach (var option in options) {
-			if (!option.ServerInstanceId.HasValue) {
-				Console.WriteLine($"[WARNING] Option {option.Id} is not signed");
-			} else {
-				var server = serverProvider.GetRequiredServer(option.ServerInstanceId.Value);
-				if (!server.PublicKey.VerifyData(OptionEncoding.Encode(option, server.OptionSignatureVersion), option.ServerSignature, HashAlgorithmName.SHA256)) {
-					Console.WriteLine($"[WARNING] Option {option.Id} has an invalid signature");
-				}
-			}
-		}
-		Console.WriteLine($"{options.Count} options checked");
-	}
+	//if (options != null) {
+	//	foreach (var option in options) {
+	//		if (!option.ServerInstanceId.HasValue) {
+	//			Console.WriteLine($"[WARNING] Option {option.Id} is not signed");
+	//		} else {
+	//			var server = serverProvider.GetRequiredServer(option.ServerInstanceId.Value);
+	//			if (!server.PublicKey.VerifyData(OptionEncoding.Encode(option, server.OptionSignatureVersion), option.ServerSignature, HashAlgorithmName.SHA256)) {
+	//				Console.WriteLine($"[WARNING] Option {option.Id} has an invalid signature");
+	//			}
+	//		}
+	//	}
+	//	Console.WriteLine($"{options.Count} options checked");
+	//}
 
 	if (votesCsvFile.Exists) {
 
