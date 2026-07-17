@@ -7,7 +7,7 @@ namespace Webvoto.VotingSystem.Auditing;
 
 public static class VotingEventEncoding {
 
-	public static readonly int LatestVersion = 4; // itentionally not a const!
+	public static readonly int LatestVersion = 5; // itentionally not a const!
 
 	public static byte[] Encode(VotingEventRecord ve, int version, byte[] lastEventSignature = null)
 		=> Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(getFields(ve, version, lastEventSignature)));
@@ -75,6 +75,15 @@ public static class VotingEventEncoding {
 		4 => [
 			.. getFields(ve, 3),
 			ve.VoterAddressId?.ToString(),
+		],
+
+		5 => [
+			.. getFields(ve, 4),
+			ve.GeolocationOriginCode,
+			ve.GeolocationTimestamp?.ToString("u"),
+			ve.GeolocationLatitude?.ToString(),
+			ve.GeolocationLongitude?.ToString(),
+			ve.GeolocationAccuracy?.ToString(),
 		],
 
 		_ => throw new NotImplementedException()

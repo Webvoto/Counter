@@ -114,6 +114,22 @@ public class VotingEventCsvRecord {
 	// V4
 	[Optional]
 	public string VoterAddressId { get; set; }
+
+	// V5
+	[Optional]
+	public string GeolocationOriginCode { get; set; }
+
+	[Optional]
+	public string GeolocationTimestamp { get; set; }
+
+	[Optional]
+	public string GeolocationLatitude { get; set; }
+
+	[Optional]
+	public string GeolocationLongitude { get; set; }
+
+	[Optional]
+	public string GeolocationAccuracy { get; set; }
 }
 
 public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedVotingEventRecord> {
@@ -173,5 +189,10 @@ public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedV
 		PasswordId = ParseNullableGuid(r.PasswordId),
 		CampaignNotificationId = ParseNullableGuid(r.CampaignNotificationId),
 		VoterAddressId = ParseNullableGuid(r.VoterAddressId),
+		GeolocationOriginCode = ParseString(r.GeolocationOriginCode),
+		GeolocationTimestamp = ParseNullableDate(r.GeolocationTimestamp),
+		GeolocationLatitude = ParseNullableDouble(r.GeolocationLatitude),
+		GeolocationLongitude = ParseNullableDouble(r.GeolocationLongitude),
+		GeolocationAccuracy = ParseNullableDouble(r.GeolocationAccuracy)
 	};
 }
