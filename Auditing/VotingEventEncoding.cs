@@ -79,7 +79,6 @@ public static class VotingEventEncoding {
 
 		5 => [
 			.. getFields(ve, 4),
-			ve.GeolocationOriginCode,
 			ve.GeolocationTimestamp?.ToString("u"),
 			ve.GeolocationLatitude?.ToString(),
 			ve.GeolocationLongitude?.ToString(),

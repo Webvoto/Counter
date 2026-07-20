@@ -117,9 +117,6 @@ public class VotingEventCsvRecord {
 
 	// V5
 	[Optional]
-	public string GeolocationOriginCode { get; set; }
-
-	[Optional]
 	public string GeolocationTimestamp { get; set; }
 
 	[Optional]
@@ -189,7 +186,6 @@ public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedV
 		PasswordId = ParseNullableGuid(r.PasswordId),
 		CampaignNotificationId = ParseNullableGuid(r.CampaignNotificationId),
 		VoterAddressId = ParseNullableGuid(r.VoterAddressId),
-		GeolocationOriginCode = ParseString(r.GeolocationOriginCode),
 		GeolocationTimestamp = ParseNullableDate(r.GeolocationTimestamp),
 		GeolocationLatitude = ParseNullableDouble(r.GeolocationLatitude),
 		GeolocationLongitude = ParseNullableDouble(r.GeolocationLongitude),

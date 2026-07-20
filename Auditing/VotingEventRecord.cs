@@ -86,8 +86,6 @@ namespace Webvoto.VotingSystem.Auditing {
 		
 		public Guid? VoterAddressId { get; set; }
 
-		public string? GeolocationOriginCode { get; set; }
-
 		public DateTime? GeolocationTimestamp { get; set; }
 
 		public double? GeolocationLatitude { get; set; }
