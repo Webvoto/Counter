@@ -127,6 +127,14 @@ public class VotingEventCsvRecord {
 
 	[Optional]
 	public string GeolocationAccuracy { get; set; }
+
+	// V6
+
+	[Optional]
+	public string KbaCheckFailureCode { get; set; }
+
+	[Optional]
+	public string CausedKbaLocked { get; set; }
 }
 
 public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedVotingEventRecord> {
@@ -189,6 +197,8 @@ public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedV
 		GeolocationTimestamp = ParseNullableDate(r.GeolocationTimestamp),
 		GeolocationLatitude = ParseNullableDouble(r.GeolocationLatitude),
 		GeolocationLongitude = ParseNullableDouble(r.GeolocationLongitude),
-		GeolocationAccuracy = ParseNullableDouble(r.GeolocationAccuracy)
+		GeolocationAccuracy = ParseNullableDouble(r.GeolocationAccuracy),
+		KbaCheckFailureCode = ParseString(r.KbaCheckFailureCode),
+		CausedKbaLocked = ParseNullableBool(r.CausedKbaLocked),
 	};
 }

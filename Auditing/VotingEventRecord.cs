@@ -93,5 +93,8 @@ namespace Webvoto.VotingSystem.Auditing {
 		public double? GeolocationLongitude { get; set; }
 
 		public double? GeolocationAccuracy { get; set; }
+
+		public string KbaCheckFailureCode { get; set; }
+		public bool? CausedKbaLocked { get; set; }
 	}
 }
