@@ -77,6 +77,11 @@ public static class VotingEventEncoding {
 			ve.VoterAddressId?.ToString(),
 		],
 
+		5 => [
+			.. getFields(ve, 4),
+			ve.IvrCallId?.ToString(),
+		],
+
 		_ => throw new NotImplementedException()
 	};
 }
