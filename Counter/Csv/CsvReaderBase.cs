@@ -45,6 +45,8 @@ public abstract class CsvReaderBase<TInputRecord, TOutputRecord> : IDisposable {
 
 	protected int? ParseNullableInt(string s) => IsNull(s) ? null : int.Parse(s);
 
+	protected decimal? ParseNullableDecimal(string s) => IsNull(s) ? null : decimal.Parse(s);
+
 	protected bool? ParseNullableBool(string s) => IsNull(s) ? null : s switch {
 		"0" => false,
 		"1" => true,

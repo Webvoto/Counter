@@ -115,9 +115,30 @@ public class VotingEventCsvRecord {
 	[Optional]
 	public string VoterAddressId { get; set; }
 
-	// V5
+	#region V5
+	
 	[Optional]
 	public string IvrCallId { get; set; }
+
+	[Optional]
+	public string GeolocationTimestampUtc { get; set; }
+
+	[Optional]
+	public string GeolocationLatitude { get; set; }
+
+	[Optional]
+	public string GeolocationLongitude { get; set; }
+
+	[Optional]
+	public string GeolocationAccuracy { get; set; }
+
+	[Optional]
+	public string KbaCheckFailureCode { get; set; }
+
+	[Optional]
+	public string CausedKbaLock { get; set; }
+
+	#endregion
 }
 
 public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedVotingEventRecord> {
@@ -178,5 +199,11 @@ public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedV
 		CampaignNotificationId = ParseNullableGuid(r.CampaignNotificationId),
 		VoterAddressId = ParseNullableGuid(r.VoterAddressId),
 		IvrCallId = ParseNullableGuid(r.IvrCallId),
+		GeolocationTimestampUtc = ParseNullableDate(r.GeolocationTimestampUtc),
+		GeolocationLatitude = ParseNullableDecimal(r.GeolocationLatitude),
+		GeolocationLongitude = ParseNullableDecimal(r.GeolocationLongitude),
+		GeolocationAccuracy = ParseNullableDecimal(r.GeolocationAccuracy),
+		KbaCheckFailureCode = ParseString(r.KbaCheckFailureCode),
+		CausedKbaLock = ParseNullableBool(r.CausedKbaLock),
 	};
 }

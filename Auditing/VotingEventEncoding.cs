@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 
 namespace Webvoto.VotingSystem.Auditing;
@@ -80,6 +81,12 @@ public static class VotingEventEncoding {
 		5 => [
 			.. getFields(ve, 4),
 			ve.IvrCallId?.ToString(),
+			ve.GeolocationTimestampUtc?.ToString("u"),
+			ve.GeolocationLatitude?.ToString("F6", CultureInfo.InvariantCulture), // 6 decimal places = precision of roughly 11 cm
+			ve.GeolocationLongitude?.ToString("F6", CultureInfo.InvariantCulture), // 6 decimal places = precision of roughly 11 cm
+			ve.GeolocationAccuracy?.ToString("F1", CultureInfo.InvariantCulture), // 1 decimal place: 10 centimenters (accuracy is in meters)
+			ve.KbaCheckFailureCode,
+			ve.CausedKbaLock.ToString(),
 		],
 
 		_ => throw new NotImplementedException()

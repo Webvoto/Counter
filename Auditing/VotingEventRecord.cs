@@ -83,9 +83,25 @@ namespace Webvoto.VotingSystem.Auditing {
 		public Guid? PasswordId { get; set; }
 		
 		public Guid? CampaignNotificationId { get; set; }
-		
+
 		public Guid? VoterAddressId { get; set; }
 
+		#region V5
+
 		public Guid? IvrCallId { get; set; }
+
+		public DateTime? GeolocationTimestampUtc { get; set; }
+
+		public decimal? GeolocationLatitude { get; set; }
+
+		public decimal? GeolocationLongitude { get; set; }
+
+		public decimal? GeolocationAccuracy { get; set; }
+
+		public string KbaCheckFailureCode { get; set; }
+
+		public bool? CausedKbaLock { get; set; }
+
+		#endregion
 	}
 }
