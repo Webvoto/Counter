@@ -114,6 +114,10 @@ public class VotingEventCsvRecord {
 	// V4
 	[Optional]
 	public string VoterAddressId { get; set; }
+
+	// V5
+	[Optional]
+	public string IvrCallId { get; set; }
 }
 
 public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedVotingEventRecord> {
@@ -173,5 +177,6 @@ public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedV
 		PasswordId = ParseNullableGuid(r.PasswordId),
 		CampaignNotificationId = ParseNullableGuid(r.CampaignNotificationId),
 		VoterAddressId = ParseNullableGuid(r.VoterAddressId),
+		IvrCallId = ParseNullableGuid(r.IvrCallId),
 	};
 }
