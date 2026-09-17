@@ -8,7 +8,7 @@ namespace Webvoto.VotingSystem.Auditing;
 
 public static class VotingEventEncoding {
 
-	public static readonly int LatestVersion = 4; // itentionally not a const!
+	public static readonly int LatestVersion = 5; // itentionally not a const!
 
 	public static byte[] Encode(VotingEventRecord ve, int version, byte[] lastEventSignature = null)
 		=> Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(getFields(ve, version, lastEventSignature)));
