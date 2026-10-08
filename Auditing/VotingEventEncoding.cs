@@ -8,7 +8,7 @@ namespace Webvoto.VotingSystem.Auditing;
 
 public static class VotingEventEncoding {
 
-	public static readonly int LatestVersion = 5; // itentionally not a const!
+	public static readonly int LatestVersion = 6; // itentionally not a const!
 
 	public static byte[] Encode(VotingEventRecord ve, int version, byte[] lastEventSignature = null)
 		=> Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(getFields(ve, version, lastEventSignature)));
@@ -19,6 +19,9 @@ public static class VotingEventEncoding {
 		 * DO NOT CHANGE EXISTING VERSIONS!
 		 * 
 		 * When a new field is added to VotingEventRecord, create a new version with a new field list containing the new field and update the LastestVersion above
+		 *
+		 * A version built on an earlier one must pass lastEventSignature along, or the previous event's signature is encoded
+		 * as null. Versions 3 to 5 lost it this way, so version 6 adds it back at the end of its list.
 		 */
 
 		1 => [
@@ -87,6 +90,13 @@ public static class VotingEventEncoding {
 			ve.GeolocationAccuracy?.ToString("F1", CultureInfo.InvariantCulture), // 1 decimal place: 10 centimenters (accuracy is in meters)
 			ve.KbaCheckFailureCode,
 			ve.CausedKbaLock.ToString(),
+		],
+
+		6 => [
+			.. getFields(ve, 5),
+			ve.VotingSiteId?.ToString(),
+			ve.WorkerOtpId?.ToString(),
+			lastEventSignature != null ? Convert.ToBase64String(lastEventSignature) : null,
 		],
 
 		_ => throw new NotImplementedException()

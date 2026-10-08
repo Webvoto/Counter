@@ -103,5 +103,13 @@ namespace Webvoto.VotingSystem.Auditing {
 		public bool? CausedKbaLock { get; set; }
 
 		#endregion
+
+		#region V6
+
+		public Guid? VotingSiteId { get; set; }
+
+		public Guid? WorkerOtpId { get; set; }
+
+		#endregion
 	}
 }
