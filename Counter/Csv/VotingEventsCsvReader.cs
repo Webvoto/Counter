@@ -139,6 +139,16 @@ public class VotingEventCsvRecord {
 	public string CausedKbaLock { get; set; }
 
 	#endregion
+
+	#region V6
+
+	[Optional]
+	public string VotingSiteId { get; set; }
+
+	[Optional]
+	public string WorkerOtpId { get; set; }
+
+	#endregion
 }
 
 public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedVotingEventRecord> {
@@ -205,5 +215,7 @@ public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedV
 		GeolocationAccuracy = ParseNullableDecimal(r.GeolocationAccuracy),
 		KbaCheckFailureCode = ParseString(r.KbaCheckFailureCode),
 		CausedKbaLock = ParseNullableBool(r.CausedKbaLock),
+		VotingSiteId = ParseNullableGuid(r.VotingSiteId),
+		WorkerOtpId = ParseNullableGuid(r.WorkerOtpId),
 	};
 }
