@@ -111,5 +111,20 @@ namespace Webvoto.VotingSystem.Auditing {
 		public Guid? WorkerOtpId { get; set; }
 
 		#endregion
+
+		#region V7
+
+		// The trust service that provided a cloud certificate authentication's certificate (WVS-311)
+		public string CloudCertificateService { get; set; }
+
+		// Why a gov.br authentication failed (WVS-672)
+		public string GovBrAuthenticationFailureCode { get; set; }
+
+		// The blob holding the ID token gov.br signed for a successful gov.br authentication, kept as proof, and its hash (WVS-672)
+		public Guid? GovBrIdTokenBlobId { get; set; }
+
+		public string GovBrIdTokenHash { get; set; }
+
+		#endregion
 	}
 }

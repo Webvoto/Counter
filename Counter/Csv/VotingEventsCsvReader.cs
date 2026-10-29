@@ -149,6 +149,22 @@ public class VotingEventCsvRecord {
 	public string WorkerOtpId { get; set; }
 
 	#endregion
+
+	#region V7
+
+	[Optional]
+	public string CloudCertificateService { get; set; }
+
+	[Optional]
+	public string GovBrAuthenticationFailureCode { get; set; }
+
+	[Optional]
+	public string GovBrIdTokenBlobId { get; set; }
+
+	[Optional]
+	public string GovBrIdTokenHash { get; set; }
+
+	#endregion
 }
 
 public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedVotingEventRecord> {
@@ -217,5 +233,9 @@ public class VotingEventsCsvReader : CsvReaderBase<VotingEventCsvRecord, SignedV
 		CausedKbaLock = ParseNullableBool(r.CausedKbaLock),
 		VotingSiteId = ParseNullableGuid(r.VotingSiteId),
 		WorkerOtpId = ParseNullableGuid(r.WorkerOtpId),
+		CloudCertificateService = ParseString(r.CloudCertificateService),
+		GovBrAuthenticationFailureCode = ParseString(r.GovBrAuthenticationFailureCode),
+		GovBrIdTokenBlobId = ParseNullableGuid(r.GovBrIdTokenBlobId),
+		GovBrIdTokenHash = ParseString(r.GovBrIdTokenHash),
 	};
 }
