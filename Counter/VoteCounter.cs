@@ -60,7 +60,19 @@ namespace Counter {
 			var password = Console.ReadLine();
 			
 			decryptionKey = RSA.Create();
-			decryptionKey.ImportEncryptedPkcs8PrivateKey(Encoding.UTF8.GetBytes(password), decryptionKeyPkcs8Bytes, out _);
+			// The key generator (node-forge, transparencia.webvoto.com.br/keygen) takes each character of the password as one
+			// byte; .NET and other tools use UTF-8. Both are the same for a password without accents.
+			var latin1Password = password.Select(c => (byte)c).ToArray();
+			var utf8Password = Encoding.UTF8.GetBytes(password);
+			foreach (var passwordBytes in latin1Password.SequenceEqual(utf8Password) ? [latin1Password] : new[] { latin1Password, utf8Password }) {
+				try {
+					decryptionKey.ImportEncryptedPkcs8PrivateKey(passwordBytes, decryptionKeyPkcs8Bytes, out _);
+					return;
+				} catch (CryptographicException) {
+					// try the next encoding of the password
+				}
+			}
+			throw new Exception("Wrong decryption key file password");
 		}
 
 		private void initializeRemoteDecryptionKey(FileInfo decryptionKeyFile) {
@@ -195,7 +207,7 @@ namespace Counter {
 		}
 
 		private async Task<DecryptionTable> decryptChoicesAsync(List<Vote> votes) {
-			var ciphers = votes.SelectMany(v => v.Value.Choices.Select(c => c.EncryptedChoice));
+			var ciphers = votes.SelectMany(v => v.Value.Choices.Select(c => VoteEncoding.GetEncryptedKey(c.EncryptedChoices))).ToList();
 			var plaintexts = decryptionKey != null
 				? ciphers.Select(c => decryptionKey.Decrypt(c, RSAEncryptionPadding.OaepSHA256))
 				: await webVaultClient.DecryptBatchAsync(decryptionKeyParams.KeyId, ciphers);
@@ -240,12 +252,14 @@ namespace Counter {
 
 		private void countVote(ElectionResultCollection results, DecryptionTable choiceDecryptions, Vote vote) {
 			foreach (var choice in vote.Value.Choices) {
-				var decryptedChoice = Encoding.UTF8.GetString(choiceDecryptions.GetDecryption(choice.EncryptedChoice));
-				results
-					.GetOrAddElection(choice.ElectionId)
-					.GetOrAddDistrict(choice.DistrictId)
-					.GetOrAddParty(decryptedChoice)
-					.Increment();
+				var decryptedKey = choiceDecryptions.GetDecryption(VoteEncoding.GetEncryptedKey(choice.EncryptedChoices));
+				foreach (var decryptedChoice in VoteEncoding.DecryptChoices(choice.EncryptedChoices, decryptedKey)) {
+					results
+						.GetOrAddElection(choice.ElectionId)
+						.GetOrAddDistrict(choice.DistrictId)
+						.GetOrAddParty(decryptedChoice)
+						.Increment(choice.VoteWeight);
+				}
 			}
 		}
 
