@@ -39,7 +39,7 @@ namespace Counter {
 
 		public void Initialize(FileInfo signatureCertificateFile, FileInfo decryptionKeyFile) {
 			Console.WriteLine("Initializing ...");
-			signatureCertificate = new X509Certificate2(File.ReadAllBytes(signatureCertificateFile.FullName));
+			signatureCertificate = X509CertificateLoader.LoadCertificate(File.ReadAllBytes(signatureCertificateFile.FullName));
 			signatureCertificatePublicKey = signatureCertificate.GetRSAPublicKey();
 			if (decryptionKeyFile != null) {
 				if (decryptionKeyFile.Extension.Equals(".pem", StringComparison.InvariantCultureIgnoreCase)) {
@@ -225,13 +225,13 @@ namespace Counter {
 
 			var cmsInfo = CmsEncoding.Decode(vote.CmsSignature);
 
-			var expectedMessageDigestValue = HashAlgorithm.Create(cmsInfo.MessageDigest.Algorithm.Name).ComputeHash(vote.EncodedValue);
+			var expectedMessageDigestValue = CryptographicOperations.HashData(cmsInfo.MessageDigest.Algorithm, vote.EncodedValue);
 			if (!cmsInfo.MessageDigest.Value.SequenceEqual(expectedMessageDigestValue)) {
 				throw new Exception("Message digest mismatch");
 			}
 
 			// Check signing certificate
-			var expectedCertDigestValue = HashAlgorithm.Create(cmsInfo.SigningCertificateDigest.Algorithm.Name).ComputeHash(signatureCertificate.RawData);
+			var expectedCertDigestValue = CryptographicOperations.HashData(cmsInfo.SigningCertificateDigest.Algorithm, signatureCertificate.RawData);
 			if (!cmsInfo.SigningCertificateDigest.Value.SequenceEqual(expectedCertDigestValue)) {
 				throw new Exception("Signing certificate mismatch");
 			}
