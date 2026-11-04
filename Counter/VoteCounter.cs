@@ -57,7 +57,7 @@ namespace Counter {
 			var decryptionKeyPkcs8Bytes = Util.DecodePem(decryptionKeyPkcs8Pem);
 			
 			Console.WriteLine("Please provide the decryption key file password:");
-			var password = Console.ReadLine();
+			var password = Util.ReadPassword();
 			
 			decryptionKey = RSA.Create();
 			// The key generator (node-forge, transparencia.webvoto.com.br/keygen) takes each character of the password as one

@@ -8,6 +8,31 @@ namespace Counter {
 	
 	public static class Util {
 
+		// Reads a line from the console without echoing it, showing an asterisk per character: the password may be typed in
+		// front of an audience or a recording. Redirected input (e.g. piped) is read as a plain line.
+		public static string ReadPassword() {
+			if (Console.IsInputRedirected) {
+				return Console.ReadLine();
+			}
+			var password = new StringBuilder();
+			while (true) {
+				var key = Console.ReadKey(intercept: true);
+				if (key.Key == ConsoleKey.Enter) {
+					Console.WriteLine();
+					return password.ToString();
+				}
+				if (key.Key == ConsoleKey.Backspace) {
+					if (password.Length > 0) {
+						password.Length--;
+						Console.Write("\b \b");
+					}
+				} else if (!char.IsControl(key.KeyChar)) {
+					password.Append(key.KeyChar);
+					Console.Write('*');
+				}
+			}
+		}
+
 		public static byte[] DecodeHex(string s) {
 			if (s == null) {
 				throw new ArgumentNullException(nameof(s));
