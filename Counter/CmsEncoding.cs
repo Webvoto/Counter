@@ -39,7 +39,7 @@ namespace Counter {
 			}
 			var signedData = SignedData.GetInstance(contentInfo.Content);
 			var signerInfo = SignerInfo.GetInstance(signedData.SignerInfos.FirstOrDefault() ?? throw new Exception($"The CMS is expected to contain at least one signer, but has none"));
-			var signedAtts = signerInfo.AuthenticatedAttributes.Select(a => CmsAttribute.GetInstance(a));
+			var signedAtts = signerInfo.SignedAttrs.Select(a => CmsAttribute.GetInstance(a));
 			var digestAlg = HashAlgorithmName.FromOid(signerInfo.DigestAlgorithm.Algorithm.Id);
 
 			// Message digest
@@ -53,10 +53,10 @@ namespace Counter {
 			var signingCertDigestValue = signingCertID.GetCertHash();
 
 			// Signature
-			var signature = signerInfo.EncryptedDigest.GetOctets();
+			var signature = signerInfo.Signature.GetOctets();
 
 			// Signed attributes
-			var signedAttributesDigestValue = HashAlgorithm.Create(digestAlg.Name).ComputeHash(signerInfo.AuthenticatedAttributes.GetDerEncoded());
+			var signedAttributesDigestValue = CryptographicOperations.HashData(digestAlg, signerInfo.SignedAttrs.GetDerEncoded());
 
 			return new CmsInfo(
 				new DigestAlgorithmAndValue(digestAlg, messageDigestValue),
