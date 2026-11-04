@@ -66,8 +66,13 @@ async static Task runAsync(string[] args) {
 
 	var signatureKeyParamsFile = new FileInfo(Path.ChangeExtension(signatureCertificateFile.FullName, ".json"));
 	if (signatureKeyParamsFile.Exists) {
-		Console.WriteLine("Signing results ...");
 		var signatureKeyParams = WebVaultKeyParameters.Deserialize(File.ReadAllText(signatureKeyParamsFile.FullName));
+		// Left out of the file, the API key is typed without echoing it, so it is neither stored with the other files nor shown
+		if (string.IsNullOrWhiteSpace(signatureKeyParams.ApiKey)) {
+			Console.WriteLine("Please provide the Web Vault API key to sign the results:");
+			signatureKeyParams.ApiKey = Util.ReadPassword();
+		}
+		Console.WriteLine("Signing results ...");
 		var webVaultClient = new WebVaultClient(signatureKeyParams.Endpoint, signatureKeyParams.ApiKey);
 		var cms = await webVaultClient.SignCadesAsync(signatureKeyParams.KeyId, resultsFileBytes, File.ReadAllBytes(signatureCertificateFile.FullName));
 		var cmsPath = $"signed-results-{timestamp}.p7s";
