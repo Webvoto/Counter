@@ -73,8 +73,8 @@ namespace Counter {
 			votes = 0;
 		}
 
-		public void Increment() {
-			Interlocked.Increment(ref votes);
+		public void Increment(int count = 1) {
+			Interlocked.Add(ref votes, count);
 		}
 	}
 }
