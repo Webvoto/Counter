@@ -31,5 +31,19 @@ public class OptionRecord {
 	// The number the candidate was given on joining the body holding the election, when the Option is the candidate (WVS-716)
 	public string InscriptionNumber { get; set; }
 
+	// A Parent option is never chosen itself: it opens a further Round of its child options, under its Round statement (WVS-669)
+	public bool IsParent { get; set; }
+
+	public Guid? ParentOptionId { get; set; }
+
+	public string RoundStatement { get; set; }
+
+	// The values a Question's Tie-break criteria compare the Option on (WVS-717). The dates are calendar dates, with no time or offset.
+	public DateOnly? BirthDate { get; set; }
+
+	public DateOnly? InscriptionDate { get; set; }
+
+	public int? TieBreakPriority { get; set; }
+
 	#endregion
 }

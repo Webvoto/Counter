@@ -55,6 +55,24 @@ public class OptionCsvRecord {
 	[Optional]
 	public string InscriptionNumber { get; set; }
 
+	[Optional]
+	public string IsParent { get; set; }
+
+	[Optional]
+	public string ParentOptionId { get; set; }
+
+	[Optional]
+	public string RoundStatement { get; set; }
+
+	[Optional]
+	public string BirthDate { get; set; }
+
+	[Optional]
+	public string InscriptionDate { get; set; }
+
+	[Optional]
+	public string TieBreakPriority { get; set; }
+
 	#endregion
 }
 
@@ -90,6 +108,12 @@ public class OptionsCsvReader : CsvReaderBase<OptionCsvRecord, SignedOptionRecor
 		Description = ParseString(r.Description),
 		DateDeletedUtc = ParseNullableDate(r.DateDeletedUtc),
 		InscriptionNumber = ParseString(r.InscriptionNumber),
+		IsParent = ParseNullableBool(r.IsParent) ?? false,
+		ParentOptionId = ParseNullableGuid(r.ParentOptionId),
+		RoundStatement = ParseString(r.RoundStatement),
+		BirthDate = ParseNullableDateOnly(r.BirthDate),
+		InscriptionDate = ParseNullableDateOnly(r.InscriptionDate),
+		TieBreakPriority = ParseNullableInt(r.TieBreakPriority),
 		SessionName = r.SessionName,
 		QuestionName = r.QuestionName,
 		ServerInstanceId = ParseNullableInt(r.ServerInstanceId),

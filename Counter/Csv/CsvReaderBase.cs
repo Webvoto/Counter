@@ -61,6 +61,8 @@ public abstract class CsvReaderBase<TInputRecord, TOutputRecord> : IDisposable {
 
 	protected DateTime? ParseNullableDate(string s) => IsNull(s) ? null : DateTime.Parse(s);
 
+	protected DateOnly? ParseNullableDateOnly(string s) => IsNull(s) ? null : DateOnly.Parse(s, CultureInfo.InvariantCulture);
+
 	protected bool IsNull(string s) => s == "NULL" || s == null;
 
 	public void Dispose() {

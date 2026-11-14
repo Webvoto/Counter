@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 
 namespace Webvoto.VotingSystem.Auditing;
@@ -37,6 +38,12 @@ public static class OptionEncoding {
 		2 => [
 			.. getFields(op, 1),
 			op.InscriptionNumber,
+			op.IsParent.ToString(),
+			op.ParentOptionId?.ToString(),
+			op.RoundStatement,
+			op.BirthDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+			op.InscriptionDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+			op.TieBreakPriority?.ToString(CultureInfo.InvariantCulture),
 		],
 
 		_ => throw new NotImplementedException()
