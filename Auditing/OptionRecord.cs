@@ -25,4 +25,11 @@ public class OptionRecord {
 	public string Description { get; set; }
 
 	public DateTime? DateDeletedUtc { get; set; }
+
+	#region V2
+
+	// The number the candidate was given on joining the body holding the election, when the Option is the candidate (WVS-716)
+	public string InscriptionNumber { get; set; }
+
+	#endregion
 }

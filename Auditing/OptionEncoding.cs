@@ -7,7 +7,7 @@ namespace Webvoto.VotingSystem.Auditing;
 
 public static class OptionEncoding {
 
-	public static readonly int LatestVersion = 1; // itentionally not a const!
+	public static readonly int LatestVersion = 2; // itentionally not a const!
 
 	public static byte[] Encode(OptionRecord op, int version)
 		=> Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(getFields(op, version)));
@@ -32,6 +32,11 @@ public static class OptionEncoding {
 			op.ImageThumbprint,
 			op.Description,
 			op.DateDeletedUtc?.ToString("u"),
+		],
+
+		2 => [
+			.. getFields(op, 1),
+			op.InscriptionNumber,
 		],
 
 		_ => throw new NotImplementedException()
