@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using CsvHelper.Configuration.Attributes;
+using System.Collections.Generic;
 using System.IO;
 using Webvoto.VotingSystem.Auditing;
 
@@ -48,6 +49,13 @@ public class OptionCsvRecord {
 	public string ServerInstanceId { get; set; }
 
 	public string ServerSignature { get; set; }
+
+	#region V2
+
+	[Optional]
+	public string InscriptionNumber { get; set; }
+
+	#endregion
 }
 
 public class OptionsCsvReader : CsvReaderBase<OptionCsvRecord, SignedOptionRecord> {
@@ -81,6 +89,7 @@ public class OptionsCsvReader : CsvReaderBase<OptionCsvRecord, SignedOptionRecor
 		ImageThumbprint = ParseString(r.ImageThumbprint),
 		Description = ParseString(r.Description),
 		DateDeletedUtc = ParseNullableDate(r.DateDeletedUtc),
+		InscriptionNumber = ParseString(r.InscriptionNumber),
 		SessionName = r.SessionName,
 		QuestionName = r.QuestionName,
 		ServerInstanceId = ParseNullableInt(r.ServerInstanceId),
