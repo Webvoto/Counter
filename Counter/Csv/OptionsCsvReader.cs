@@ -108,7 +108,8 @@ public class OptionsCsvReader : CsvReaderBase<OptionCsvRecord, SignedOptionRecor
 		Description = ParseString(r.Description),
 		DateDeletedUtc = ParseNullableDate(r.DateDeletedUtc),
 		InscriptionNumber = ParseString(r.InscriptionNumber),
-		IsParent = ParseNullableBool(r.IsParent) ?? false,
+		// The column is missing from older exports, which predate Parent options. When present it is a non-nullable bit, so a NULL is a bad export.
+		IsParent = r.IsParent != null && ParseBool(r.IsParent),
 		ParentOptionId = ParseNullableGuid(r.ParentOptionId),
 		RoundStatement = ParseString(r.RoundStatement),
 		BirthDate = ParseNullableDateOnly(r.BirthDate),
