@@ -50,18 +50,18 @@ public abstract class CsvReaderBase<TInputRecord, TOutputRecord> : IDisposable {
 	protected bool? ParseNullableBool(string s) => IsNull(s) ? null : s switch {
 		"0" => false,
 		"1" => true,
-		_ => throw new FormatException($"Bad bit value: \"s\"")
+		_ => throw new FormatException($"Bad bit value: \"{s}\"")
 	};
 
 	protected bool ParseBool(string s) => s switch {
 		"0" => false,
 		"1" => true,
-		_ => throw new FormatException($"Bad bit value: \"s\"")
+		_ => throw new FormatException($"Bad bit value: \"{s}\"")
 	};
 
 	protected DateTime? ParseNullableDate(string s) => IsNull(s) ? null : DateTime.Parse(s);
 
-	protected DateOnly? ParseNullableDateOnly(string s) => IsNull(s) ? null : DateOnly.Parse(s, CultureInfo.InvariantCulture);
+	protected DateOnly? ParseNullableDateOnly(string s) => IsNull(s) ? null : DateOnly.ParseExact(s, "yyyy-MM-dd", CultureInfo.InvariantCulture);
 
 	protected bool IsNull(string s) => s == "NULL" || s == null;
 
