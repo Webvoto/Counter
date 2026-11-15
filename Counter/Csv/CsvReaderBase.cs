@@ -50,16 +50,31 @@ public abstract class CsvReaderBase<TInputRecord, TOutputRecord> : IDisposable {
 	protected bool? ParseNullableBool(string s) => IsNull(s) ? null : s switch {
 		"0" => false,
 		"1" => true,
-		_ => throw new FormatException($"Bad bit value: \"s\"")
+		_ => throw new FormatException($"Bad bit value: \"{s}\"")
 	};
 
 	protected bool ParseBool(string s) => s switch {
 		"0" => false,
 		"1" => true,
-		_ => throw new FormatException($"Bad bit value: \"s\"")
+		_ => throw new FormatException($"Bad bit value: \"{s}\"")
 	};
 
 	protected DateTime? ParseNullableDate(string s) => IsNull(s) ? null : DateTime.Parse(s);
+
+	// A calendar date may come from a datetime or datetime2 column, exported with a time part (1990-05-01 00:00:00.000). The time must be
+	// midnight: any other time means the column holds an instant, and which calendar date was signed is unknown.
+	private static readonly string[] dateOnlyFormats = ["yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss.FFFFFFF"];
+
+	protected DateOnly? ParseNullableDateOnly(string s) {
+		if (IsNull(s)) {
+			return null;
+		}
+		var dateTime = DateTime.ParseExact(s, dateOnlyFormats, CultureInfo.InvariantCulture, DateTimeStyles.None);
+		if (dateTime.TimeOfDay != TimeSpan.Zero) {
+			throw new FormatException($"Date has a time other than midnight: \"{s}\"");
+		}
+		return DateOnly.FromDateTime(dateTime);
+	}
 
 	protected bool IsNull(string s) => s == "NULL" || s == null;
 

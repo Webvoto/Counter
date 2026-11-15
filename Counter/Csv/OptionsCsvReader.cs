@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using CsvHelper.Configuration.Attributes;
+using System.Collections.Generic;
 using System.IO;
 using Webvoto.VotingSystem.Auditing;
 
@@ -48,6 +49,31 @@ public class OptionCsvRecord {
 	public string ServerInstanceId { get; set; }
 
 	public string ServerSignature { get; set; }
+
+	#region V2
+
+	[Optional]
+	public string InscriptionNumber { get; set; }
+
+	[Optional]
+	public string IsParent { get; set; }
+
+	[Optional]
+	public string ParentOptionId { get; set; }
+
+	[Optional]
+	public string RoundStatement { get; set; }
+
+	[Optional]
+	public string BirthDate { get; set; }
+
+	[Optional]
+	public string InscriptionDate { get; set; }
+
+	[Optional]
+	public string TieBreakPriority { get; set; }
+
+	#endregion
 }
 
 public class OptionsCsvReader : CsvReaderBase<OptionCsvRecord, SignedOptionRecord> {
@@ -81,6 +107,14 @@ public class OptionsCsvReader : CsvReaderBase<OptionCsvRecord, SignedOptionRecor
 		ImageThumbprint = ParseString(r.ImageThumbprint),
 		Description = ParseString(r.Description),
 		DateDeletedUtc = ParseNullableDate(r.DateDeletedUtc),
+		InscriptionNumber = ParseString(r.InscriptionNumber),
+		// The column is missing from older exports, which predate Parent options. When present it is a non-nullable bit, so a NULL is a bad export.
+		IsParent = r.IsParent != null && ParseBool(r.IsParent),
+		ParentOptionId = ParseNullableGuid(r.ParentOptionId),
+		RoundStatement = ParseString(r.RoundStatement),
+		BirthDate = ParseNullableDateOnly(r.BirthDate),
+		InscriptionDate = ParseNullableDateOnly(r.InscriptionDate),
+		TieBreakPriority = ParseNullableInt(r.TieBreakPriority),
 		SessionName = r.SessionName,
 		QuestionName = r.QuestionName,
 		ServerInstanceId = ParseNullableInt(r.ServerInstanceId),
